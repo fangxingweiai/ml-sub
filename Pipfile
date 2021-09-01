@@ -4,13 +4,11 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-requests = "*"
 pyyaml = "*"
+fastapi = "*"
 loguru = "*"
 netaddr = "*"
-pysocks = "*"
-fastapi = "*"
-uvicorn = {extras = ["standard"], version = "*"}
+requests = "*"
 
 [dev-packages]
 
