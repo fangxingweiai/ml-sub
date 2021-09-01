@@ -7,10 +7,9 @@ import sys
 import requests
 import yaml
 from fastapi import FastAPI
-from flask import Flask, request
+from fastapi.responses import HTMLResponse
 from loguru import logger
 from netaddr import *
-from fastapi.responses import HTMLResponse
 
 logger.remove()
 logger.add(sys.stdout, level="INFO")
@@ -73,6 +72,7 @@ def get_sub(url):
         "http": "socks5://127.0.0.1:7890",
         'https': 'socks5://127.0.0.1:7890'
     }
+    proxies = None
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.159 Safari/537.36'}
     res = requests.get(url, headers=headers, proxies=proxies, verify=False)
@@ -294,6 +294,7 @@ def sub(input_content: str, host: str, client: str):
 @app.get("/")
 def index():
     return HTMLResponse("hello world")
+
 
 if __name__ == '__main__':
     # v2_sub = "https://yyjsd.top/api/v1/client/subscribe?token=51a42767197ef3d7b3e16005531f4647"
