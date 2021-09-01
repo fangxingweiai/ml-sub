@@ -3,7 +3,7 @@
     "description": "免流订阅转换",
     "keywords": ["v2ray clash ml vmess subconverter"],
     "env": {},
-    "website": "https://github.com/gankang/ml-sub",
-    "repository": "https://github.com/gankang/ml-sub",
+    "website": "https://github.com/fangxingweiai/ml-sub",
+    "repository": "https://github.com/fangxingweiai/ml-sub",
     "stack": "container"
 }
