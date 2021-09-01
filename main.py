@@ -304,4 +304,4 @@ if __name__ == '__main__':
     # class_public_pool_sub = "https://cdn.jsdelivr.net/gh/gankang/MyConfig@main/clash/proxypool.yaml"
     # sub_2_nodelist(class_public_pool_sub)
     # app.run(host="127.0.0.1", port=8000)
-    pass
+    os.getenv("PORT")
