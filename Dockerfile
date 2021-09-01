@@ -6,5 +6,5 @@ WORKDIR /python
 
 RUN apk update && apk add build-base && pip3 install pipenv && pipenv update
 
-CMD ucicorn main:app --host 0.0.0.0 --port $PORT
+CMD uvicorn main:app --host 0.0.0.0
 
