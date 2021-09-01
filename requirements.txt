@@ -1,0 +1,6 @@
+fastapi==0.68.1
+loguru==0.5.3
+netaddr==0.8.0
+PyYAML==5.4.1
+requests==2.26.0
+uvicorn==0.15.0
