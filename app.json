@@ -5,10 +5,5 @@
     "v2ray clash ml vmess subconverter"
   ],
   "website": "https://github.com/fangxingweiai/ml-sub",
-  "repository": "https://github.com/fangxingweiai/ml-sub",
-  "buildpacks": [
-    {
-      "url": "heroku/python"
-    }
-  ]
+  "repository": "https://github.com/fangxingweiai/ml-sub"
 }
