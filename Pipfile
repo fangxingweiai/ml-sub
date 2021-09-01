@@ -9,6 +9,7 @@ fastapi = "*"
 loguru = "*"
 netaddr = "*"
 requests = "*"
+uvicorn = "*"
 
 [dev-packages]
 

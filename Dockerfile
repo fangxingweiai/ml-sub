@@ -4,6 +4,7 @@ COPY . /python
 
 WORKDIR /python
 
+RUN apk update && apk add build-base && pip3 install pipenv && pipenv update
 
-CMD apk update && apk add build-base && pip3 install pipenv && pipenv update && uvicorn main:app --host=0.0.0.0 --port=${PORT:-8000}
+CMD uvicorn main:app --host=0.0.0.0 --port=${PORT:-8000}
 
