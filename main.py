@@ -8,11 +8,16 @@ from fastapi.responses import HTMLResponse
 from loguru import logger
 
 from config_models import V2rayN, Clash
-from helper import base64_decode, base64_encode, is_base64_link, get_sub, is_reserve_proxy, remove_special_characters
+from helper import base64_decode, base64_encode, is_base64_link, get_request, is_reserve_proxy, \
+    remove_special_characters
 
+# 设置日志
+logger_level = "DEBUG"
 logger.remove()
-# logger.add(sys.stdout, level="DEBUG")
-logger.add(sys.stdout, level="INFO")
+logger.add(sys.stdout, level=logger_level)
+# 设置代理
+enable_proxy = True if logger_level == "DEBUG" else False
+get_sub = get_request(enable_proxy)
 
 app = FastAPI()
 
@@ -67,9 +72,13 @@ def clashsub_2_nodelist(sub_content):
 
 def sub_2_nodelist(sub_url):
     logger.info(f"开始获取订阅{sub_url}的内容")
-    sub_content = get_sub(sub_url)
+    try:
+        sub_content = get_sub(sub_url)
+    except Exception:
+        logger.error("获取订阅内容出错!")
+        return []
 
-    sub_content =  remove_special_characters(sub_content)
+    sub_content = remove_special_characters(sub_content)
     logger.debug(f"获取订阅{sub_url}的内容为: {sub_content}")
 
     if "rules:" in sub_content or sub_content.startswith("proxies:"):
@@ -127,7 +136,6 @@ def sub(input_content: str, host: str, client: str):
 
     sub = ""
     if len(nodes) > 0:
-
         change_host(nodes, host)
 
         logger.info(f'生成{client}订阅')

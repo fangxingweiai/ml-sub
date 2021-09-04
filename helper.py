@@ -52,34 +52,46 @@ def is_reserve_proxy(content):
 
 def check_ip(ip):
     ip = ip.strip()
+    result = True
 
     if ip == "1.1.1.1" or ip == "1.0.0.1" or ip == "0.0.0.0":
         return False
 
     try:
         ip_add = IPAddress(ip)
+        if not ip_add.is_unicast() or ip_add.is_private() or ip_add.is_loopback() or ip_add.is_link_local() or ip_add.is_reserved():
+            result = False
     except:
-        return False
+        pass
 
-    if ip_add.is_unicast() and not ip_add.is_private() and not ip_add.is_loopback() and not ip_add.is_link_local() and not ip_add.is_reserved():
-        return True
-    return False
+    return result
 
 
-def get_sub(url):
-    proxies = {
-        "http": "http://localhost:7891",
-        'https': 'https://localhost:7891'
-    }
-    proxies = proxies
+_request = None
 
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.159 Safari/537.36'}
-    res = requests.get(url, headers=headers, proxies=proxies, verify=False)
-    # res = requests.get(url, headers=headers, proxies=proxies)
-    sub_content = res.text.strip()
 
-    return sub_content
+def get_request(enable_proxy=False):
+    global _request
+    if _request:
+        return _request
+    else:
+        def inner(url):
+            proxies = None
+            if enable_proxy:
+                proxies = {
+                    "http": "http://localhost:7891",
+                    'https': 'https://localhost:7891'
+                }
+
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.159 Safari/537.36'}
+            res = requests.get(url, headers=headers, proxies=proxies, verify=False)
+            sub_content = res.text.strip()
+
+            return sub_content
+
+        _request = inner
+        return _request
 
 
 def remove_special_characters(content):
