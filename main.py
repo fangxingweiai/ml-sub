@@ -25,7 +25,12 @@ template = Jinja2Templates('templates')
 
 
 def v2sub_2_nodelist(sub_content):
-    origin_sub = base64_decode(sub_content)
+    try:
+        origin_sub = base64_decode(sub_content)
+    except:
+        logger.error(f'v2订阅转码失败，查明！{sub_content}')
+        return []
+
     logger.debug(f"base64解码后订阅：{origin_sub}")
     raw_links = re.split('\r\n|\n|\r', origin_sub)
 
