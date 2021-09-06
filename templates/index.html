@@ -259,7 +259,10 @@
                     setBorderColor(nodes, '#E4E7ED')
                     setBorderColor(host, '#E4E7ED')
                     setBorderColor(client, '#E4E7ED')
-                    var url = 'https://ml-sub.herokuapp.com/sub?client=' + selectedClient + '&host=' + inputHost + '&url='
+
+                    var subProtocol = window.location.protocol
+                    var subHost = window.location.host
+                    var url = subProtocol + '//' + subHost + '/sub?client=' + selectedClient + '&host=' + inputHost + '&url='
 
                     var inputUrls = urls.join("|")
                     url = url + inputUrls
@@ -349,7 +352,6 @@
                     alert("订阅已复制到剪贴板");
                 }
             }
-
         }
     </script>
 </head>

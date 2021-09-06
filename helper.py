@@ -21,7 +21,6 @@ def base64_encode(content):
     return base64.b64encode(bytes_content).decode('utf-8')
 
 
-
 def check_ip(ip):
     if ip == "1.1.1.1" or ip == "1.0.0.1" or ip == "0.0.0.0":
         return False

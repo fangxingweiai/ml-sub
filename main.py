@@ -13,7 +13,7 @@ from config_models import V2rayN, Clash
 from helper import base64_decode, base64_encode, get_request, remove_special_characters
 
 # 设置日志
-logger_level = "DEBUG"
+logger_level = "INFO"
 logger.remove()
 logger.add(sys.stdout, level=logger_level)
 # 设置代理
@@ -172,14 +172,3 @@ def index(req: Request):
         "clients": clients
     }
     return template.TemplateResponse('index.html', data)
-
-
-if __name__ == '__main__':
-    # v2_sub = "https://yyjsd.top/api/v1/client/subscribe?token=51a42767197ef3d7b3e16005531f4647"
-    # v2_sub1 = "https://sub.ykmbbs.top/api/v1/client/subscribe?token=f785c02f0a945355476023e250d923f7"
-    # clash_sub = "https://subcon.dlj.tf/sub?target=clash&new_name=true&url=https%3A%2F%2Fyyjsd.top%2Fapi%2Fv1%2Fclient%2Fsubscribe%3Ftoken%3D51a42767197ef3d7b3e16005531f4647&insert=false&config=https%3A%2F%2Fraw.githubusercontent.com%2FACL4SSR%2FACL4SSR%2Fmaster%2FClash%2Fconfig%2FACL4SSR_Online.ini"
-    #
-    # class_public_pool_sub = "https://cdn.jsdelivr.net/gh/gankang/MyConfig@main/clash/proxypool.yaml"
-    # sub_2_nodelist(class_public_pool_sub)
-    # app.run(host="127.0.0.1", port=8000)
-    os.getenv("PORT")
