@@ -1,6 +1,8 @@
+import configparser
 import os
 import re
 import sys
+from io import StringIO
 
 import yaml
 from fastapi import FastAPI
@@ -131,12 +133,38 @@ def generate_sub(nodes, client):
             proxy_names.append(proxy["name"])
 
         sub = yaml.dump(sub)
+    elif client == "Surfboard":
+        sub = configparser.ConfigParser()
+        sub.add_section("General")
+        sub.set("General", "dns-server", "system, 8.8.8.8, 8.8.4.4")
+        sub.set("General", "proxy-test-url", "http://www.gstatic.com/generate_204")
+        sub.add_section("Proxy")
+        sub.add_section("Proxy Group")
+        # sub.set('Proxy Group', 'Proxy', 'select,DIRECT,REJECT')
+        proxy = 'select,DIRECT,REJECT'
+        sub.add_section("Rule")
+        sub.set('Rule', '', 'FINAL,proxy')
+
+        for node in nodes:
+            sf_proxy = node.generate_surfboard_proxy()
+            if sf_proxy:
+                logger.debug(f'生成Surfboard 节点: {proxy}')
+                name, conf = sf_proxy
+                sub.set('Proxy', name, conf)
+                proxy = proxy + ',' + name
+        sub.set('Proxy Group', 'proxy', proxy)
+
+        with StringIO() as f:
+            sub.write(f)
+            s = f.getvalue()
+            sub = re.sub(r'\s=\s+FINAL,proxy', "FINAL,proxy", s)
     return sub
 
 
 clients = [
     "v2rayN",
-    "Clash"
+    "Clash",
+    "Surfboard"
 ]
 
 

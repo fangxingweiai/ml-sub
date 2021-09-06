@@ -1,10 +1,9 @@
 import json
 
 import jsonpath
-import yaml
 from loguru import logger
 
-from helper import base64_encode, base64_decode, check_ip, get_request, remove_special_characters
+from helper import base64_encode, base64_decode, check_ip
 
 
 class BaseConf:
@@ -21,12 +20,58 @@ class BaseConf:
         '替换免流host'
         raise NotImplementedError
 
+    def generate_v2rayn_link(self):
+        '生成v2链接'
+        raise NotImplementedError
+
+    def generate_clash_proxy(self):
+        '生成clash proxies中的单个proxy'
+        raise NotImplementedError
+
+    def generate_surfboard_proxy(self):
+        '生成surfboard Proxy的单个proxy'
+        raise NotImplementedError
+
+
+# class Surfboard(BaseConf):
+#
+#     def __init__(self):
+#         # surfboard配置https://manual.getsurfboard.com/config-template
+#         self.protocol = ''
+#         self.server = ''
+#         self.port = ''
+#
+#         self.username = ''
+#         self.ws: bool = True
+#         self.tls: bool = False
+#         self.ws_path = ''
+#         self.ws_headers = ''
+#         self.skip_cert_verify: bool = True
+#         self.sni = ""
+#
+#     def generate_v2rayn_link(self):
+#         pass
+#
+#     def generate_surfboard_proxy(self):
+#         pass
+#
+#     def check(self):
+#         cp = configparser.ConfigParser()
+#         cp.read_string()
+#
+#     def extract(self):
+#         pass
+#
+#     def change_host(self, host):
+#         pass
+#
+#     def generate_clash_proxy(self):
+#         pass
+
 
 class V2rayN(BaseConf):
 
-    def __init__(self, raw_node, *args, **kwargs):
-        # super().__init__(*args, **kwargs)
-
+    def __init__(self, raw_node):
         self._raw_node = raw_node
         self.protocol = ""
 
@@ -151,11 +196,24 @@ class V2rayN(BaseConf):
 
         return proxy
 
+    def generate_surfboard_proxy(self):
+        self.extract()
+
+        ws = True if self.net == 'ws' else False
+        ws_headers = f'Host:{self.host}'
+        tls = True if self.tls else False
+        if ws:
+            proxy = self.ps, f'{self.protocol},{self.add},{self.port},username={self.id},ws={ws},tls={tls},ws-path={self.path},ws-headers={ws_headers},skip-cert-verify=true,sni={self.sni}'
+            return proxy
+        else:
+            return ""
+
     def __str__(self):
         return str(vars(self))
 
 
 class Clash(BaseConf):
+
     def __init__(self, raw_node: dict):
         self._raw_proxy = raw_node
 
@@ -230,6 +288,7 @@ class Clash(BaseConf):
                     "Host": [host]
                 }
             }
+        self.servername = host
 
     def generate_v2rayn_link(self):
         self.extract()
@@ -271,24 +330,15 @@ class Clash(BaseConf):
     def generate_clash_proxy(self):
         return self._raw_proxy
 
+    def generate_surfboard_proxy(self):
+        self.extract()
+        ws = True if self.network == 'ws' else False
+        ws_headers = f'host:{self.ws_host}'
+        if ws:
+            proxy = self.name, f'{self.type},{self.server},{self.port},username={self.uuid},ws={ws},tls={self.tls},ws-path={self.ws_path},ws-headers={ws_headers},skip-cert-verify={self.skip_cert_verify},sni={self.servername}'
+            return proxy
+        else:
+            return ""
+
     def __str__(self):
         return str(vars(self))
-
-
-if __name__ == '__main__':
-    url = "https://pub-api-1.bianyuan.xyz/sub?target=clash&url=https%3A%2F%2Fyyjsd.top%2Fapi%2Fv1%2Fclient%2Fsubscribe%3Ftoken%3D51a42767197ef3d7b3e16005531f4647%7C&insert=false"
-    b64_link_ws = "vmess://ew0KICAidiI6ICIyIiwNCiAgInBzIjogIvCfh7fwn4e6IOS/hOe9l+aWryIsDQogICJhZGQiOiAiNDYuMjkuMTY1LjE0NSIsDQogICJwb3J0IjogIjgwIiwNCiAgImlkIjogImI1ODU3YWQ3LWUyNGMtNGUxZi1hOTYyLTkzZjQ3YmJlNTg3MyIsDQogICJhaWQiOiAiMSIsDQogICJzY3kiOiAiYXV0byIsDQogICJuZXQiOiAid3MiLA0KICAidHlwZSI6ICJub25lIiwNCiAgImhvc3QiOiAiYS4xODkuY24iLA0KICAicGF0aCI6ICIvIiwNCiAgInRscyI6ICJ0bHMiLA0KICAic25pIjogImEuMTg5LmNuIg0KfQ=="
-    b64_link_tcp = "vmess://ew0KICAidiI6ICIyIiwNCiAgInBzIjogImF6MTB0Y3AiLA0KICAiYWRkIjogIjQwLjgzLjEyMC45MyIsDQogICJwb3J0IjogIjgwIiwNCiAgImlkIjogImI1ODU3YWQ3LWUyNGMtNGUxZi1hOTYyLTkzZjQ3YmJlNTg3MyIsDQogICJhaWQiOiAiMSIsDQogICJzY3kiOiAiYXV0byIsDQogICJuZXQiOiAidGNwIiwNCiAgInR5cGUiOiAiaHR0cCIsDQogICJob3N0IjogInd3d3cuYmFpZHUuY29tIiwNCiAgInBhdGgiOiAiLyIsDQogICJ0bHMiOiAiIiwNCiAgInNuaSI6ICJ3d3d3LmJhaWR1LmNvbSINCn0="
-    clash_url = "https://misakanode.cf/Clash.yml"
-    v2_sub = "https://yyjsd.top/api/v1/client/subscribe?token=51a42767197ef3d7b3e16005531f4647"
-    v2_node = 'vmess://eyJhZGQiOiIxNjguNjMuMTUyLjIxMiIsImFpZCI6IjEiLCJob3N0IjoicHVsbC5mcmVlLnZpZGVvLjEwMDEwLmNvbSIsImlkIjoiMDgwMjVhNzMtOThmMS00YTBjLWE3NjYtYmQzYzAxZDM0MDNhIiwibmV0Ijoid3MiLCJwYXRoIjoiLyIsInBvcnQiOiI4MCIsInBzIjoi6IqC54K555m95auW576kNzE0Mjg4NjU25LiN5a6a5pe25pu05pawIiwic2N5IjoiYXV0byIsInNuaSI6IiIsInRscyI6IiIsInR5cGUiOiIiLCJ2IjoiMiJ9'
-    # sub_content = get_sub(clash_url)
-    v = V2rayN(b64_link_ws)
-    print(v.check())
-    print(v.change_host('a.189.cn'))
-    print(v.generate_clash_proxy())
-    print('-' * 40)
-    # get_sub = get_request(True)
-    # sub_content = get_sub(clash_url)
-    # sub_content = remove_special_characters(sub_content)
-    # json_content = yaml.load(sub_content, yaml.FullLoader)
