@@ -21,50 +21,19 @@ def base64_encode(content):
     return base64.b64encode(bytes_content).decode('utf-8')
 
 
-def is_base64_link(link):
-    parts = link.strip().split('://')
-
-    result = False
-    if len(parts) == 2:
-        try:
-            json.loads(base64_decode(parts[1]))
-            result = True
-        except Exception:
-            pass
-    return result
-
-
-def is_reserve_proxy(content):
-    if not content:
-        return False
-
-    result = False
-    if isinstance(content, str):
-        if content.startswith('vmess://'):
-            result = True
-    elif isinstance(content, dict):
-        protocol = content.get('type', "").strip()
-        if protocol == 'vmess':
-            result = True
-
-    return result
-
 
 def check_ip(ip):
-    ip = ip.strip()
-    result = True
-
     if ip == "1.1.1.1" or ip == "1.0.0.1" or ip == "0.0.0.0":
         return False
 
     try:
         ip_add = IPAddress(ip)
         if not ip_add.is_unicast() or ip_add.is_private() or ip_add.is_loopback() or ip_add.is_link_local() or ip_add.is_reserved():
-            result = False
+            return False
     except:
         pass
 
-    return result
+    return True
 
 
 _request = None
@@ -79,8 +48,8 @@ def get_request(enable_proxy=False):
             proxies = None
             if enable_proxy:
                 proxies = {
-                    "http": "http://localhost:7891",
-                    'https': 'https://localhost:7891'
+                    "http": "http://127.0.0.1:7890",
+                    'https': 'https://127.0.0.1:7890'
                 }
 
             headers = {
@@ -99,5 +68,4 @@ def remove_special_characters(content):
 
 
 if __name__ == '__main__':
-    print(is_base64_link(
-        'vmess://ew0KICAidiI6ICIyIiwNCiAgInBzIjogIvCfh7fwn4e6IOS/hOe9l+aWryIsDQogICJhZGQiOiAiNDYuMjkuMTY1LjE0NSIsDQogICJwb3J0IjogIjgwIiwNCiAgImlkIjogImI1ODU3YWQ3LWUyNGMtNGUxZi1hOTYyLTkzZjQ3YmJlNTg3MyIsDQogICJhaWQiOiAiMSIsDQogICJzY3kiOiAiYXV0byIsDQogICJuZXQiOiAid3MiLA0KICAidHlwZSI6ICJub25lIiwNCiAgImhvc3QiOiAiYS4xODkuY24iLA0KICAicGF0aCI6ICIvIiwNCiAgInRscyI6ICJ0bHMiLA0KICAic25pIjogImEuMTg5LmNuIg0KfQ=='))
+    pass

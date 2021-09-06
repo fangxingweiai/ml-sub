@@ -4,12 +4,13 @@ import sys
 
 import yaml
 from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
+from fastapi.responses import PlainTextResponse
 from loguru import logger
+from starlette.requests import Request
+from starlette.templating import Jinja2Templates
 
 from config_models import V2rayN, Clash
-from helper import base64_decode, base64_encode, is_base64_link, get_request, is_reserve_proxy, \
-    remove_special_characters
+from helper import base64_decode, base64_encode, get_request, remove_special_characters
 
 # 设置日志
 logger_level = "DEBUG"
@@ -20,6 +21,7 @@ enable_proxy = True if logger_level == "DEBUG" else False
 get_sub = get_request(enable_proxy)
 
 app = FastAPI()
+template = Jinja2Templates('templates')
 
 
 def v2sub_2_nodelist(sub_content):
@@ -30,16 +32,11 @@ def v2sub_2_nodelist(sub_content):
     nodes = []
     for link in raw_links:
         link = link.strip()
-        if is_reserve_proxy(link):
-            if is_base64_link(link):
-                vn = V2rayN()
-                if vn.extract_from_base64_link(link):
-                    logger.debug(f'订阅中的v2节点: {link}')
-                    nodes.append(vn)
-            else:
-                logger.warning(f'该节点不是base64的v2节点: {link},查明！')
-        else:
-            logger.debug(f'无效的节点: {link}')
+        vn = V2rayN(link)
+        if vn.check():
+            logger.debug(f'订阅中的v2节点: {link}')
+            nodes.append(vn)
+
     return nodes
 
 
@@ -52,13 +49,10 @@ def clashsub_2_nodelist(sub_content):
     if proxies:
         logger.debug(f'直接获取clash中的proxies：{proxies}')
         for proxy in proxies:
-            if is_reserve_proxy(proxy):
-                c = Clash()
-                if c.extract(proxy):
-                    logger.debug(f"clash proxies中的节点: {c}")
-                    nodes.append(c)
-            else:
-                logger.debug(f'无效的节点: {proxy}')
+            c = Clash(proxy)
+            if c.check():
+                logger.debug(f"clash proxies中的节点: {c}")
+                nodes.append(c)
 
     elif proxy_providers:
         logger.info(f'获取clash中的proxy-providers')
@@ -74,8 +68,8 @@ def sub_2_nodelist(sub_url):
     logger.info(f"开始获取订阅{sub_url}的内容")
     try:
         sub_content = get_sub(sub_url)
-    except Exception:
-        logger.error("获取订阅内容出错!")
+    except Exception as e:
+        logger.error(f"获取订阅内容出错! {e.args}")
         return []
 
     sub_content = remove_special_characters(sub_content)
@@ -95,7 +89,7 @@ def sub_2_nodelist(sub_url):
 def change_host(nodes, host):
     logger.info(f"将过滤完的节点的host用{host}替换")
     for node in nodes:
-        node.host = host
+        node.change_host(host)
         logger.debug(f'{type(node)} 替换完host: {node}')
 
 
@@ -104,15 +98,47 @@ def generate_sub(nodes, client):
     if client == "v2rayN":
         vn_links = []
         for node in nodes:
+            logger.debug(f'生成v2节点: {node}')
             vn_links.append(node.generate_v2rayn_link())
         sub = base64_encode(os.linesep.join(vn_links))
+    elif client == "Clash":
+        sub = {
+            "mixed-port": 7890,
+            "allow-lan": True,
+            "bind-address": '*',
+            "mode": 'Global',
+            "log-level": "info",
+            "external-controller": '127.0.0.1:9090',
+            'proxies': [],
+            "proxy-groups": [{"name": "Proxy",
+                              "type": "select",
+                              "proxies": []}],
+            'rules': ["MATCH,Proxy"]
+        }
+
+        proxies = sub['proxies']
+        proxy_names = sub["proxy-groups"][0]["proxies"]
+        for node in nodes:
+            proxy = node.generate_clash_proxy()
+            logger.debug(f'生成clash 节点: {proxy}')
+
+            proxies.append(proxy)
+            proxy_names.append(proxy["name"])
+
+        sub = yaml.dump(sub)
     return sub
 
 
+clients = [
+    "v2rayN",
+    "Clash"
+]
+
+
 @app.get("/sub")
-def sub(input_content: str, host: str, client: str):
-    logger.debug(f"用户需要转换的内容：{input_content}")
-    node_content = input_content.strip()
+def sub(url: str, host: str, client: str):
+    logger.debug(f"用户需要转换的内容：{url}")
+    node_content = url.strip().replace(' ', "")
     input_list = re.split('\r\n|\n|\r|\\|', node_content)
 
     nodes = []
@@ -121,16 +147,11 @@ def sub(input_content: str, host: str, client: str):
         if i.startswith("http"):
             node_list = sub_2_nodelist(i)
             nodes.extend(node_list)
-        elif is_reserve_proxy(i):
-            if is_base64_link(i):
-                vn = V2rayN()
-                if vn.extract_from_base64_link(i):
-                    logger.info(f"v2节点，直接添加: {i}")
-                    nodes.append(vn)
-            else:
-                logger.warning(f'该节点不是base64的v2节点: {i},查明！')
         else:
-            logger.debug(f'无效的节点: {i}')
+            vn = V2rayN(i)
+            if vn.check():
+                logger.info(f"v2节点，直接添加: {i}")
+                nodes.append(vn)
 
     logger.info(f"用户输入有效节点总个数为: {len(nodes)}")
 
@@ -140,12 +161,17 @@ def sub(input_content: str, host: str, client: str):
 
         logger.info(f'生成{client}订阅')
         sub = generate_sub(nodes, client)
-    return HTMLResponse(sub)
+        logger.info(f'生成{client}订阅成功！')
+    return PlainTextResponse(sub)
 
 
 @app.get("/")
-def index():
-    return HTMLResponse("hello world")
+def index(req: Request):
+    data = {
+        "request": req,
+        "clients": clients
+    }
+    return template.TemplateResponse('index.html', data)
 
 
 if __name__ == '__main__':
