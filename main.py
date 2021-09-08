@@ -213,7 +213,8 @@ def sub(url: str, host: str, client: str):
         logger.info(f'生成{client}订阅')
         sub = generate_sub(nodes, client)
         logger.info(f'生成{client}订阅成功！')
-    return PlainTextResponse(sub)
+
+    return PlainTextResponse(sub, headers={'Content-Disposition': 'filename=ml-sub'})
 
 
 @app.get("/")
