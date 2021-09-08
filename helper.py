@@ -1,9 +1,11 @@
 import base64
-import json
 import os
 
 import requests
 from netaddr import IPAddress
+from urllib3.exceptions import InsecureRequestWarning
+
+requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 
 def base64_decode(content):

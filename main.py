@@ -117,20 +117,35 @@ def generate_sub(nodes, client):
             "log-level": "info",
             "external-controller": '127.0.0.1:9090',
             'proxies': [],
-            "proxy-groups": [{"name": "Proxy",
-                              "type": "select",
-                              "proxies": []}],
+            "proxy-groups": [
+                {"name": "Proxy",
+                 "type": "select",
+                 "proxies": []},
+                {"name": "Auto",
+                 "type": "url-test",
+                 "proxies": [],
+                 "url": "http://www.gstatic.com/generate_204",
+                 "interval": 600
+                 }],
             'rules': ["MATCH,Proxy"]
         }
 
+        # clash中节点重名会运行不了，故直接用序号代替原来名字。解析clash原订阅时，订阅内容中包含一些特殊字符，通过处理也会导致节点名字不完整甚至名字完全丢失。
+        proxy_name = 0
+
         proxies = sub['proxies']
         proxy_names = sub["proxy-groups"][0]["proxies"]
+        auto_names = sub["proxy-groups"][1]["proxies"]
         for node in nodes:
             proxy = node.generate_clash_proxy()
             logger.debug(f'生成clash 节点: {proxy}')
 
+            proxy_name += 1
+            proxy["name"] = str(proxy_name)
+
             proxies.append(proxy)
-            proxy_names.append(proxy["name"])
+            proxy_names.append(proxy_name)
+            auto_names.append(proxy_name)
 
         sub = yaml.dump(sub)
     elif client == "Surfboard":
