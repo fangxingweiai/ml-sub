@@ -40,6 +40,7 @@ def v2sub_2_nodelist(sub_content):
     for link in raw_links:
         link = link.strip()
         vn = V2rayN(link)
+        logger.debug('检查v2节点有效性')
         if vn.check():
             logger.debug(f'订阅中的v2节点: {link}')
             nodes.append(vn)
@@ -57,6 +58,7 @@ def clashsub_2_nodelist(sub_content):
         logger.debug(f'直接获取clash中的proxies：{proxies}')
         for proxy in proxies:
             c = Clash(proxy)
+            logger.debug('检查Clash节点有效性')
             if c.check():
                 logger.debug(f"clash proxies中的节点: {c}")
                 nodes.append(c)
@@ -197,6 +199,7 @@ def sub(url: str, host: str, client: str):
             nodes.extend(node_list)
         else:
             vn = V2rayN(i)
+            logger.debug('检查v2节点有效性')
             if vn.check():
                 logger.info(f"v2节点，直接添加: {i}")
                 nodes.append(vn)

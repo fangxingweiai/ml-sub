@@ -245,8 +245,8 @@ class Clash(BaseConf):
         server = proxy.get('server', '')
 
         if protocol == 'vmess' and (network == "ws" or network == "http" or network == "") and check_ip(server):
-            logger.debug(f'无效的clash proxy节点')
             return True
+        logger.debug(f'无效的clash proxy节点')
         return False
 
     def extract(self):
@@ -278,17 +278,19 @@ class Clash(BaseConf):
             self.http_hosts = http_hosts[0]
 
     def change_host(self, host):
-        if self.network == 'ws':
+        network = self._raw_proxy['network']
+        if network == 'ws':
             self._raw_proxy["ws-headers"] = {
                 "Host": host
             }
-        elif self.network == 'http' or self.network == "":
+        elif network == 'http' or network == "":
             self._raw_proxy["http-opts"] = {
                 "headers": {
                     "Host": [host]
                 }
             }
-        self.servername = host
+
+        self._raw_proxy['servername'] = host
 
     def generate_v2rayn_link(self):
         self.extract()
