@@ -25,14 +25,14 @@
             border-radius: 10px;
         }
 
-        .part {
-            margin: 20px 20px 0;
-        }
-
         h4 {
             margin-bottom: 5px;
             color: #606266;
 
+        }
+
+        .part {
+            margin: 20px 20px 0;
         }
 
         .part > div {
@@ -160,10 +160,10 @@
         window.onload = function () {
             var nodes = document.getElementsByClassName("nodes")[0]
             var nodesText = nodes.firstElementChild
-            addChangeBorderColorEvent(nodes)
             nodesText.addEventListener('click', function (e) {
                 setBorderColor(link, '#E4E7ED')
                 setBorderColor(nodes, '#E4E7ED')
+                setBorderColor(nodes, '#C2C6CE')
                 switchChoiesDispay()
                 e.stopPropagation()
             })
@@ -185,6 +185,7 @@
             client.addEventListener('click', function (e) {
                 switchChoiesDispay(client)
                 setBorderColor(link, '#E4E7ED')
+                setBorderColor(nodes, '#E4E7ED')
                 e.stopPropagation()
             })
             addChangeMouseEvent(client, "", "")
@@ -195,13 +196,10 @@
             var arrow = document.getElementsByClassName("arrow")[0]
             for (let i = 0; i < choies.length; i++) {
                 choies[i].addEventListener('mouseover', function (e) {
-                    console.log('each over')
-
                     this.style.backgroundColor = '#F5F7FA'
                 })
 
                 choies[i].addEventListener('mouseout', function (e) {
-                    console.log('each out')
                     this.style.backgroundColor = ''
                 })
 
@@ -210,7 +208,6 @@
                     switchChoiesDispay(this)
                     e.stopPropagation()
                 })
-
             }
 
             var btn = document.getElementsByClassName("button")[0]
@@ -243,7 +240,6 @@
                 urls = urls.map(function (v) {
                     return encodeURIComponent(v)
                 })
-
 
                 if (inputHost.length < 3) {
                     ok = false
@@ -293,6 +289,7 @@
                 el.addEventListener('focus', function (e) {
                     setBorderColor(el, focusColor || "#C2C6CE")
                     setBorderColor(link, '#E4E7ED')
+                    setBorderColor(nodes, '#E4E7ED')
                 })
                 el.addEventListener('blur', function (e) {
                     setBorderColor(el, blurColor || "#E4E7ED")
@@ -378,7 +375,6 @@
             </div>
             <div class="arrow"></div>
         </div>
-
     </div>
     <div class="part">
         <div class="link">
@@ -387,9 +383,11 @@
             <div class="button">生成</div>
             <div class="copy">复制</div>
         </div>
-
+    </div>
+    <div class="part">
+        <p>本项目已开源: <a href="https://github.com/fangxingweiai/ml-sub" target="_blank">https://github.com/fangxingweiai/ml-sub</a>
+        </p>
     </div>
 </div>
-
 </body>
 </html>
