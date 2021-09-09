@@ -179,9 +179,9 @@ def generate_sub(nodes, client):
 
 
 clients = [
-    "v2rayN",
     "Clash",
-    "Surfboard"
+    "Surfboard",
+    "v2rayN"
 ]
 
 
