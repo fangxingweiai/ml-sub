@@ -26,7 +26,7 @@ worker_class = "uvicorn.workers.UvicornWorker"
 worker_connections = 1000
 
 # 以守护进程形式运行：后台运行
-daemon = True
+daemon = False
 
 loglevel = 'info'
 pidfile = 'log/gunicorn.pid'
