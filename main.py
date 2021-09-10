@@ -115,21 +115,21 @@ def generate_sub(nodes, client):
             "mixed-port": 7890,
             "allow-lan": True,
             "bind-address": '*',
-            "mode": 'Global',
+            "mode": 'rule',
             "log-level": "info",
             "external-controller": '127.0.0.1:9090',
             'proxies': [],
             "proxy-groups": [
-                {"name": "Proxy",
+                {"name": "🌐 Select",
                  "type": "select",
-                 "proxies": []},
-                {"name": "Auto",
+                 "proxies": ['♻ Auto', 'DIRECT', 'REJECT']},
+                {"name": "♻ Auto",
                  "type": "url-test",
                  "proxies": [],
                  "url": "http://www.gstatic.com/generate_204",
                  "interval": 600
                  }],
-            'rules': ["MATCH,Proxy"]
+            'rules': ["MATCH,🌐 Select"]
         }
 
         # clash中节点重名会运行不了，故直接用序号代替原来名字。解析clash原订阅时，订阅内容中包含一些特殊字符，通过处理也会导致节点名字不完整甚至名字完全丢失。
@@ -143,11 +143,12 @@ def generate_sub(nodes, client):
             logger.debug(f'生成clash 节点: {proxy}')
 
             proxy_name += 1
-            proxy["name"] = str(proxy_name)
+            proxy_name_str = str(proxy_name)
 
+            proxy["name"] = proxy_name_str
             proxies.append(proxy)
-            proxy_names.append(proxy_name)
-            auto_names.append(proxy_name)
+            proxy_names.append(proxy_name_str)
+            auto_names.append(proxy_name_str)
 
         sub = yaml.dump(sub)
     elif client == "Surfboard":
