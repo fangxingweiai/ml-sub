@@ -3,6 +3,7 @@ import os
 import re
 import sys
 from io import StringIO
+from urllib.parse import unquote
 
 import yaml
 from fastapi import FastAPI
@@ -190,7 +191,8 @@ clients = [
 def sub(url: str, host: str, client: str):
     logger.debug(f"用户需要转换的内容：{url}")
     node_content = url.strip().replace(' ', "")
-    input_list = re.split('\r\n|\n|\r|\\|', node_content)
+    node_content = unquote(node_content)
+    input_list = re.split('\\|', node_content)
 
     nodes = []
     for i in input_list:

@@ -237,9 +237,9 @@
                     }
                     return v.length > 0
                 })
-                urls = urls.map(function (v) {
-                    return encodeURIComponent(v)
-                })
+                // urls = urls.map(function (v) {
+                //     return encodeURIComponent(v)
+                // })
 
                 if (inputHost.length < 3) {
                     ok = false
@@ -261,7 +261,7 @@
                     var url = subProtocol + '//' + subHost + '/sub?client=' + selectedClient + '&host=' + inputHost + '&url='
 
                     var inputUrls = urls.join("|")
-                    url = url + inputUrls
+                    url = url + encodeURIComponent(inputUrls)
                     switchLinkStatus(link, '#67C23A', url)
                 } else {
                     switchLinkStatus(link, '#E4E7ED', "")
