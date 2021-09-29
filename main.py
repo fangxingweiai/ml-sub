@@ -167,7 +167,7 @@ def generate_sub(nodes, client):
         for node in nodes:
             sf_proxy = node.generate_surfboard_proxy()
             if sf_proxy:
-                logger.debug(f'生成Surfboard 节点: {proxy}')
+                logger.debug(f'生成Surfboard 节点: {sf_proxy}')
                 name, conf = sf_proxy
                 sub.set('Proxy', name, conf)
                 proxy = proxy + ',' + name
@@ -213,7 +213,7 @@ def sub(url: str, host: str, client: str):
     if len(nodes) > 0:
         change_host(nodes, host)
 
-        logger.info(f'生成{client}订阅')
+        logger.info(f'开始生成{client}订阅')
         sub = generate_sub(nodes, client)
         logger.info(f'生成{client}订阅成功！')
 
