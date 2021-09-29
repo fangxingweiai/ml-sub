@@ -164,13 +164,20 @@ def generate_sub(nodes, client):
         sub.add_section("Rule")
         sub.set('Rule', '', 'FINAL,proxy')
 
+        # Surfboard中节点重名会运行不了，故直接用序号代替原来名字。解析Surfboard原订阅时，订阅内容中包含一些特殊字符，通过处理也会导致节点名字不完整甚至名字完全丢失。
+        proxy_name = 0
+
         for node in nodes:
             sf_proxy = node.generate_surfboard_proxy()
             if sf_proxy:
                 logger.debug(f'生成Surfboard 节点: {sf_proxy}')
-                name, conf = sf_proxy
-                sub.set('Proxy', name, conf)
-                proxy = proxy + ',' + name
+                _, conf = sf_proxy
+
+                proxy_name += 1
+                proxy_name_str = str(proxy_name)
+
+                sub.set('Proxy', proxy_name_str, conf)
+                proxy = proxy + ',' + proxy_name_str
         sub.set('Proxy Group', 'proxy', proxy)
 
         with StringIO() as f:
