@@ -1,8 +1,8 @@
 import base64
+import ipaddress
 import os
 
 import requests
-from netaddr import IPAddress
 from urllib3.exceptions import InsecureRequestWarning
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
@@ -28,11 +28,12 @@ def check_ip(ip):
         return False
 
     try:
-        ip_add = IPAddress(ip)
-        if not ip_add.is_unicast() or ip_add.is_private() or ip_add.is_loopback() or ip_add.is_link_local() or ip_add.is_reserved():
+        ip_addr = ipaddress.ip_address(ip)
+        if ip_addr.is_multicast or ip_addr.is_private or ip_addr.is_loopback or ip_addr.is_link_local or ip_addr.is_reserved or ip_addr.is_unspecified:
             return False
-    except:
-        pass
+    except ValueError as e:
+        if '.' not in ip:
+            return False
 
     return True
 
@@ -69,4 +70,5 @@ def remove_special_characters(content):
 
 
 if __name__ == '__main__':
-    pass
+    r = check_ip('262349039')
+    print(r)
