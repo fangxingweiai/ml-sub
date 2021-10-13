@@ -199,11 +199,11 @@ class V2rayN(BaseConf):
     def generate_surfboard_proxy(self):
         self.extract()
 
-        ws = True if self.net == 'ws' else False
+        ws = 'true' if self.net == 'ws' else 'false'
         ws_headers = f'Host:{self.host}'
-        tls = True if self.tls else False
-        if ws:
-            proxy = self.ps, f'{self.protocol},{self.add},{self.port},username={self.id},ws={ws},tls={tls},ws-path={self.path},ws-headers={ws_headers},skip-cert-verify=true,sni={self.sni}'
+        tls = 'true' if self.tls else 'false'
+        if ws == 'true':  # 是否在check里面处理
+            proxy = self.ps, f'{self.protocol}, {self.add}, {self.port}, username={self.id}, ws={ws}, tls={tls}, ws-path={self.path}, ws-headers={ws_headers}, skip-cert-verify=true, sni={self.sni}'
             return proxy
         else:
             return ""
@@ -334,10 +334,12 @@ class Clash(BaseConf):
 
     def generate_surfboard_proxy(self):
         self.extract()
-        ws = True if self.network == 'ws' else False
+        ws = 'true' if self.network == 'ws' else 'false'
         ws_headers = f'host:{self.ws_host}'
+        tls = 'true' if self.tls else 'false'
+        skip_cert_verify = 'true' if self.skip_cert_verify else 'false'
         if ws:
-            proxy = self.name, f'{self.type},{self.server},{self.port},username={self.uuid},ws={ws},tls={self.tls},ws-path={self.ws_path},ws-headers={ws_headers},skip-cert-verify={self.skip_cert_verify},sni={self.servername}'
+            proxy = self.name, f'{self.type}, {self.server}, {self.port}, username={self.uuid}, ws={ws}, tls={tls}, ws-path={self.ws_path}, ws-headers={ws_headers}, skip-cert-verify={skip_cert_verify}, sni={self.servername}'
             return proxy
         else:
             return ""

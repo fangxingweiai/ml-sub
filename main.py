@@ -154,13 +154,19 @@ def generate_sub(nodes, client):
         sub = yaml.dump(sub)
     elif client == "Surfboard":
         sub = configparser.ConfigParser()
+
         sub.add_section("General")
         sub.set("General", "dns-server", "system, 8.8.8.8, 8.8.4.4")
         sub.set("General", "proxy-test-url", "http://www.gstatic.com/generate_204")
+
         sub.add_section("Proxy")
+
         sub.add_section("Proxy Group")
         # sub.set('Proxy Group', 'Proxy', 'select,DIRECT,REJECT')
-        proxy = 'select,DIRECT,REJECT'
+        select_proxy = 'select, auto, DIRECT, REJECT'
+        # AutoTestGroup = url-test, ProxySOCKS5, ProxySOCKS5TLS, url=http://www.gstatic.com/generate_204, interval=600, tolerance=100, timeout=5
+        auto_proxy = 'url-test'
+
         sub.add_section("Rule")
         sub.set('Rule', '', 'FINAL,proxy')
 
@@ -177,13 +183,16 @@ def generate_sub(nodes, client):
                 proxy_name_str = str(proxy_name)
 
                 sub.set('Proxy', proxy_name_str, conf)
-                proxy = proxy + ',' + proxy_name_str
-        sub.set('Proxy Group', 'proxy', proxy)
+                select_proxy = select_proxy + ', ' + proxy_name_str
+                auto_proxy = auto_proxy + ', ' + proxy_name_str
+        auto_proxy = auto_proxy + ', url=http://www.gstatic.com/generate_204, interval=600, tolerance=100, timeout=5'
+        sub.set('Proxy Group', 'select', select_proxy)
+        sub.set('Proxy Group', 'auto', auto_proxy)
 
         with StringIO() as f:
             sub.write(f)
             s = f.getvalue()
-            sub = re.sub(r'\s=\s+FINAL,proxy', "FINAL,proxy", s)
+            sub = re.sub(r'\s=\s+FINAL,proxy', "FINAL, select", s)
     return sub
 
 
