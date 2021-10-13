@@ -206,6 +206,7 @@ class V2rayN(BaseConf):
             proxy = self.ps, f'{self.protocol}, {self.add}, {self.port}, username={self.id}, ws={ws}, tls={tls}, ws-path={self.path}, ws-headers={ws_headers}, skip-cert-verify=true, sni={self.sni}'
             return proxy
         else:
+            logger.info('surfboard不支持http免流')
             return ""
 
     def __str__(self):
@@ -244,6 +245,7 @@ class Clash(BaseConf):
         protocol = proxy.get('type', '')
         server = proxy.get('server', '')
 
+        # clash配置network为空，可能为ws,也可能为http
         if protocol == 'vmess' and (network == "ws" or network == "http" or network == "") and check_ip(server):
             return True
         logger.debug(f'无效的clash proxy节点')
@@ -264,7 +266,10 @@ class Clash(BaseConf):
         self.tls = proxy.get("tls", False)
         self.skip_cert_verify = proxy.get("skip-cert-verify", True)
         self.servername = proxy.get("servername", "")
-        self.network = proxy.get("network", "")
+
+        self.network = proxy.get("network", "http")  # clash配置network为空，可能为ws,也可能为http
+        proxy['network'] = self.network
+
         self.ws_path = proxy.get("ws-path", "")
 
         # ws的host
@@ -278,12 +283,14 @@ class Clash(BaseConf):
             self.http_hosts = http_hosts[0]
 
     def change_host(self, host):
-        network = self._raw_proxy['network']
+        network = self._raw_proxy.get('network', 'http') # clash配置network为空，可能为ws,也可能为http
+        self._raw_proxy['network'] = network
+
         if network == 'ws':
             self._raw_proxy["ws-headers"] = {
                 "Host": host
             }
-        elif network == 'http' or network == "":
+        elif network == 'http':
             self._raw_proxy["http-opts"] = {
                 "headers": {
                     "Host": [host]
@@ -313,7 +320,7 @@ class Clash(BaseConf):
         if self.cipher:
             config['scy'] = self.cipher
 
-        if self.network == 'http' or self.network == "":
+        if self.network == 'http':
             config['net'] = 'tcp'
             config['type'] = 'http'
             config['host'] = ','.join(self.http_hosts)
@@ -342,6 +349,7 @@ class Clash(BaseConf):
             proxy = self.name, f'{self.type}, {self.server}, {self.port}, username={self.uuid}, ws={ws}, tls={tls}, ws-path={self.ws_path}, ws-headers={ws_headers}, skip-cert-verify={skip_cert_verify}, sni={self.servername}'
             return proxy
         else:
+            logger.info('surfboard不支持http免流')
             return ""
 
     def __str__(self):
