@@ -56,7 +56,7 @@ def get_request(enable_proxy=False):
 
             headers = {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.159 Safari/537.36'}
-            res = requests.get(url, headers=headers, proxies=proxies, verify=False)
+            res = requests.get(url, headers=headers, proxies=proxies, verify=False, timeout=3)
             sub_content = res.text.strip()
 
             return sub_content
