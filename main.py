@@ -128,8 +128,9 @@ def generate_sub(nodes, client):
                  "type": "url-test",
                  "proxies": [],
                  "url": "http://www.gstatic.com/generate_204",
-                 "interval": 600
-                 }],
+                 "interval": 600,
+                 "lazy": True}
+            ],
             'rules': ["MATCH,🌐 Select"]
         }
 
