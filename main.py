@@ -114,11 +114,21 @@ def generate_sub(nodes, client):
     elif client == "Clash":
         sub = {
             "mixed-port": 7890,
-            "allow-lan": True,
-            "bind-address": '*',
-            "mode": 'rule',
+            "allow-lan": False,
+            "mode": "Rule",
             "log-level": "info",
-            "external-controller": '127.0.0.1:9090',
+            "external-controller": "127.0.0.1:9090",
+            "dns": {
+                "enable": True,
+                "enhanced-mode": "fake-ip",
+                "fake-ip-range": "198.18.0.1/16",
+                "ipv6": False,
+                "nameserver": [
+                    "114.114.114.114",
+                    "223.5.5.5",
+                    "tls://13800000000.rubyfish.cn:853"
+                ]
+            },
             'proxies': [],
             "proxy-groups": [
                 {"name": "🌐 Select",
