@@ -33,42 +33,6 @@ class BaseConf:
         raise NotImplementedError
 
 
-# class Surfboard(BaseConf):
-#
-#     def __init__(self):
-#         # surfboard配置https://manual.getsurfboard.com/config-template
-#         self.protocol = ''
-#         self.server = ''
-#         self.port = ''
-#
-#         self.username = ''
-#         self.ws: bool = True
-#         self.tls: bool = False
-#         self.ws_path = ''
-#         self.ws_headers = ''
-#         self.skip_cert_verify: bool = True
-#         self.sni = ""
-#
-#     def generate_v2rayn_link(self):
-#         pass
-#
-#     def generate_surfboard_proxy(self):
-#         pass
-#
-#     def check(self):
-#         cp = configparser.ConfigParser()
-#         cp.read_string()
-#
-#     def extract(self):
-#         pass
-#
-#     def change_host(self, host):
-#         pass
-#
-#     def generate_clash_proxy(self):
-#         pass
-
-
 class V2rayN(BaseConf):
 
     def __init__(self, raw_node):
@@ -171,9 +135,11 @@ class V2rayN(BaseConf):
             "network": self.net,
 
             # ws
-            "ws-path": self.path,
-            "ws-headers": {
-                "Host": self.host
+            "ws-opts": {
+                "path": self.path,
+                "headers": {
+                    "Host": self.host
+                }
             },
 
             # tcp
@@ -191,8 +157,7 @@ class V2rayN(BaseConf):
             proxy.pop("tls")
             proxy.pop("skip-cert-verify")
             proxy.pop("servername")
-            proxy.pop("ws-path")
-            proxy.pop("ws-headers")
+            proxy.pop("ws-opts")
 
         return proxy
 
@@ -234,6 +199,7 @@ class Clash(BaseConf):
 
         self.network = ""
 
+        self.ws_opts = ""
         self.ws_path = ""
         self.ws_host = ""
 
@@ -270,10 +236,13 @@ class Clash(BaseConf):
         self.network = proxy.get("network", "http")  # clash配置network为空，可能为ws,也可能为http
         proxy['network'] = self.network
 
-        self.ws_path = proxy.get("ws-path", "")
+        self.ws_path = '/'
+        ws_path = jsonpath.jsonpath(proxy, '$.ws-opts.path')
+        if ws_path:
+            self.ws_path = ws_path[0]
 
         # ws的host
-        ws_host = jsonpath.jsonpath(proxy, '$.ws-headers.Host')
+        ws_host = jsonpath.jsonpath(proxy, '$.ws-opts.headers.Host')
         # tcp http的host
         http_hosts = jsonpath.jsonpath(proxy, '$.http-opts.headers.Host')
 
@@ -283,13 +252,36 @@ class Clash(BaseConf):
             self.http_hosts = http_hosts[0]
 
     def change_host(self, host):
-        network = self._raw_proxy.get('network', 'http') # clash配置network为空，可能为ws,也可能为http
+        network = self._raw_proxy.get('network', 'http')  # clash配置network为空，可能为ws,也可能为http
         self._raw_proxy['network'] = network
 
         if network == 'ws':
-            self._raw_proxy["ws-headers"] = {
-                "Host": host
-            }
+            ws_path = None
+            if self._raw_proxy.get('ws-path'):
+                ws_path = self._raw_proxy.pop('ws-path')
+            if self._raw_proxy.get('ws-headers'):
+                self._raw_proxy.pop('ws-headers')
+
+            # 新版ws-headers和ws-path设置,旧版2022会不支持
+            ws_opts = self._raw_proxy.get('ws-opts')
+            if isinstance(ws_opts, dict):
+                if ws_path:
+                    ws_opts['path'] = ws_path
+
+                ws_opts_headers = ws_opts.get('headers')
+                if isinstance(ws_opts_headers, dict):
+                    ws_opts_headers['Host'] = host
+                else:
+                    ws_opts['headers'] = {
+                        "Host": host
+                    }
+            else:
+                self._raw_proxy["ws-opts"] = {
+                    "path": ws_path if ws_path else '/',
+                    "headers": {
+                        "Host": host
+                    }
+                }
         elif network == 'http':
             self._raw_proxy["http-opts"] = {
                 "headers": {
