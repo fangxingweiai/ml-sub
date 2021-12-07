@@ -113,10 +113,12 @@ def generate_sub(nodes, client):
         sub = base64_encode(os.linesep.join(vn_links))
     elif client == "Clash":
         sub = {
-            "mixed-port": 7890,
+            "port": 7891,
+            "socks-port": 7890,
+            # "mixed-port": 7890,
             "allow-lan": False,
             "mode": "Rule",
-            "log-level": "info",
+            "log-level": "silent",
             "external-controller": "127.0.0.1:9090",
             "dns": {
                 "enable": True,
@@ -127,7 +129,20 @@ def generate_sub(nodes, client):
                     "114.114.114.114",
                     "223.5.5.5",
                     "tls://13800000000.rubyfish.cn:853"
-                ]
+                ],
+                "fallback": [
+                    "https://cloudflare-dns.com/dns-query",
+                    "https://dns.google/dns-query",
+                    "https://1.1.1.1/dns-query",
+                    "tls://8.8.8.8:853"
+                ],
+                "fallback-filter": {
+                    "geoip": True,
+                    "geoip-code": "CN",
+                    "ipcidr": [
+                        "240.0.0.0/4"
+                    ]
+                }
             },
             'proxies': [],
             "proxy-groups": [
