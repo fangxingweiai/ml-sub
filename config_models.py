@@ -106,7 +106,7 @@ class V2rayN(BaseConf):
         raw_node = self._raw_node
         if isinstance(raw_node, dict):
             raw_node['host'] = host
-            if raw_node["tls"]:
+            if raw_node.get("tls"):
                 raw_node['sni'] = host
 
     def generate_v2rayn_link(self):
