@@ -6,267 +6,202 @@ from loguru import logger
 from helper import base64_encode, base64_decode, check_ip
 
 
-class BaseConf:
+class ProxyNode(object):
 
-    def check(self):
-        '检查是否符合免流'
-        raise NotImplementedError
-
-    def extract(self):
-        '提取数据到成员变量'
-        raise NotImplementedError
-
-    def change_host(self, host):
-        '替换免流host'
-        raise NotImplementedError
-
-    def generate_v2rayn_link(self):
-        '生成v2链接'
-        raise NotImplementedError
-
-    def generate_clash_proxy(self):
-        '生成clash proxies中的单个proxy'
-        raise NotImplementedError
-
-    def generate_surfboard_proxy(self):
-        '生成surfboard Proxy的单个proxy'
-        raise NotImplementedError
-
-
-class V2rayN(BaseConf):
-
-    def __init__(self, raw_node):
-        self._raw_node = raw_node
-        self.protocol = ""
-
+    def __init__(self):
+        self._protocol = None
         # v2rayN 分享链接格式：https://github.com/2dust/v2rayN/wiki/%E5%88%86%E4%BA%AB%E9%93%BE%E6%8E%A5%E6%A0%BC%E5%BC%8F%E8%AF%B4%E6%98%8E(ver-2)
+        self.v2 = None
+        # {
+        #     "v": "2",
+        #     "ps": "",
+        #     "add": "",
+        #     "port": "",
+        #     "id": "",
+        #     "aid": "",
+        #     "scy": "",
+        #     "net": "",  # tcp\kcp\ws\h2\quic
+        #     "type": "",  # (none\http\srtp\utp\wechat-video) *tcp or kcp or QUIC
+        #
+        #     "host": "",
+        #     # 1)http(tcp)->host中间逗号(,)隔开
+        #     # 2)ws->host
+        #     # 3)h2->host
+        #     # 4)QUIC->securty
+        #
+        #     "path": "",
+        #     # 1)ws->path
+        #     # 2)h2->path
+        #     # 3)QUIC->key/Kcp->seed
+        #     # 4)grpc->serviceName
+        #
+        #     "tls": "",  # tls :str
+        #     "sni": "",
+        # }
 
-        self.v = "2"
-        self.ps = ""
-        self.add = ""
-        self.port = ""
-        self.id = ""
-        self.aid = ""
-        self.scy = ""
-        self.net = ""  # tcp\kcp\ws\h2\quic
-        self.type = ""  # (none\http\srtp\utp\wechat-video) *tcp or kcp or QUIC
+        self.clash = None
 
-        self.host = ""
-        # 1)http(tcp)->host中间逗号(,)隔开
-        # 2)ws->host
-        # 3)h2->host
-        # 4)QUIC->securty
+    def load(self, proxy_node):
+        if isinstance(proxy_node, str):
+            parts = proxy_node.strip().split('://')
 
-        self.path = ""
-        # 1)ws->path
-        # 2)h2->path
-        # 3)QUIC->key/Kcp->seed
-        # 4)grpc->serviceName
+            if len(parts) == 2:
+                part1 = parts[0].strip()
+                if part1 != 'vmess':
+                    logger.debug(f'无效的协议: {part1}')
+                    return False
 
-        self.tls: str = ""  # tls
-        self.sni = ""
+                self._protocol = part1
+                v2_json_node = None
+                try:
+                    v2_json_node = json.loads(base64_decode(parts[1]))
+                    if v2_json_node['net'] == 'tcp':  # 注意
+                        v2_json_node['type'] = 'http'
+                except:
+                    logger.error(f'无效v2格式，base64解析v2节点出错: {v2_json_node}')
+                    return False
 
-    def check(self):
-        parts = self._raw_node.strip().split('://')
+                ip = v2_json_node.get('add', "")
+                if not check_ip(ip):
+                    logger.debug(f'无效的ip: {ip}')
+                    return False
 
-        if len(parts) == 2:
-            part1 = parts[0].strip()
-            if part1 != 'vmess':
-                logger.debug(f'无效的协议: {part1}')
+                network = v2_json_node['net']
+
+                if network != "ws" and network != "tcp":
+                    logger.debug(f'无效的network: {network}')
+                    return False
+
+                self.v2 = v2_json_node
+                self.v2_to_clash()
+            else:
+                logger.error(f'无效的v2节点: {proxy_node}')
                 return False
+            return True
+        elif isinstance(proxy_node, dict):
+            network = proxy_node.get('network', '')
+            protocol = proxy_node.get('type', '')
+            server = proxy_node.get('server', '')
 
-            self.protocol = part1
-            try:
-                self._raw_node = json.loads(base64_decode(parts[1]))
-            except Exception:
-                logger.error(f'base64解析v2节点出错: {self._raw_node}')
-                return False
+            if protocol == 'vmess' and (network == "ws" or network == "http" or network == "") and check_ip(server):
+                if network == "":  # clash配置network为空，可能为ws,也可能为http
+                    proxy_node["network"] = "http"
 
-            ip = self._raw_node.get('add', "")
-            if not check_ip(ip):
-                logger.debug(f'无效的ip: {ip}')
-                return False
-
-            network = self._raw_node['net']
-
-            if network != "ws" and network != "tcp":
-                logger.debug(f'无效的network: {network}')
-                return False
-        else:
-            logger.error(f'无效的节点: {self._raw_node}')
+                self.clash = proxy_node
+                self._protocol = protocol
+                self.clash_to_v2()
+                return True
+            logger.debug(f'无效的clash节点: proxy_node')
             return False
 
-        return True
-
-    def extract(self):
-        for k, v in self._raw_node.items():
-            self.__dict__[k] = v
-
-    def change_host(self, host):
-        raw_node = self._raw_node
-        if isinstance(raw_node, dict):
-            raw_node['host'] = host
-            if raw_node.get("tls"):
-                raw_node['sni'] = host
-
-    def generate_v2rayn_link(self):
-        if self._raw_node['net'] == 'tcp':  # 注意
-            self._raw_node['type'] = 'http'
-        return self.protocol + "://" + base64_encode(json.dumps(self._raw_node, ensure_ascii=False))
-
-    def generate_clash_proxy(self):
-        self.extract()
-        proxy = {
-            "name": self.ps,
-            "type": self.protocol,
-            "server": self.add,
-            "port": self.port,
-            "uuid": self.id,
-            "alterId": self.aid,
-            "cipher": self.scy if self.scy else 'auto',
+    def v2_to_clash(self):
+        self.clash = {
+            "name": self.v2["ps"],
+            "type": self._protocol,
+            "server": self.v2["add"],
+            "port": self.v2["port"],
+            "uuid": self.v2["id"],
+            "alterId": self.v2["aid"],
+            "cipher": self.v2.get("scy") or 'auto',
 
             # ws
-            "tls": True if self.tls else False,
-            "skip-cert-verify": True,
-            "servername": self.sni,  # priority over wss host
+            "tls": True if self.v2.get("tls") else False,
+            # "skip-cert-verify": True,
+            "servername": self.v2.get("sni", ""),  # priority over wss host
 
             # common
-            "udp": True,
-            "network": self.net,
+            # "udp": True,
+            "network": self.v2["net"],
 
             # ws
             "ws-opts": {
-                "path": self.path,
+                "path": self.v2.get("path", "/"),
                 "headers": {
-                    "Host": self.host
+                    "Host": self.v2.get("host", "")
                 }
             },
 
             # tcp
             "http-opts": {
                 "headers": {
-                    "Host": self.host.split(',')
+                    "Host": self.v2.get("host", "").split(',')
                 }
             }
         }
 
-        if self.net == 'ws':
-            proxy.pop("http-opts")
-        elif self.net == 'tcp':
-            proxy['network'] = 'http'
-            proxy.pop("tls")
-            proxy.pop("skip-cert-verify")
-            proxy.pop("servername")
-            proxy.pop("ws-opts")
+        if self.v2["net"] == 'ws':
+            self.clash.pop("http-opts")
+        elif self.v2["net"] == 'tcp':
+            self.clash['network'] = 'http'
+            self.clash.pop("tls")
+            # self.clash.pop("skip-cert-verify")
+            self.clash.pop("servername")
+            self.clash.pop("ws-opts")
 
-        return proxy
+    def clash_to_v2(self):
+        config = {
+            'v': "2",
+            'ps': self.clash["name"],
+            'add': self.clash["server"],
+            'port': self.clash["port"],
+            'id': self.clash["uuid"],
+            'aid': self.clash["alterId"],
+            'scy': self.clash.get("cipher", "auto"),
+            'net': self.clash.get("network"),  # clash配置network为空，可能为ws,也可能为http
+            'type': 'none',
+            'host': "",
+            'path': "/",
+            'tls': "",
+            'sni': ""
+        }
 
-    def generate_surfboard_proxy(self):
-        self.extract()
+        tls = self.clash.get("tls", False)
+        if tls:
+            config["tls"] = "tls"
 
-        ws = 'true' if self.net == 'ws' else 'false'
-        ws_headers = f'Host:{self.host}'
-        tls = 'true' if self.tls else 'false'
-        if ws == 'true':  # 是否在check里面处理
-            proxy = self.ps, f'{self.protocol}, {self.add}, {self.port}, username={self.id}, ws={ws}, tls={tls}, ws-path={self.path}, ws-headers={ws_headers}, skip-cert-verify=true, sni={self.sni}'
-            return proxy
+        if config["net"] == 'http':
+            config["net"] = "tcp"
+            config['type'] = 'http'
+
+            # tcp http的host
+            http_hosts = jsonpath.jsonpath(self.clash, '$.http-opts.headers.Host')
+            if http_hosts:
+                config['host'] = ','.join(http_hosts[0])
         else:
-            logger.info('surfboard不支持http免流')
-            return ""
+            # ws的host
+            ws_host = jsonpath.jsonpath(self.clash, '$.ws-opts.headers.Host') or jsonpath.jsonpath(self.clash,
+                                                                                                   '$.ws-headers.Host')
+            if ws_host:
+                config['host'] = ws_host[0]
 
-    def __str__(self):
-        return str(vars(self))
+                if tls:
+                    config["sni"] = ws_host[0]
 
+            ws_path = jsonpath.jsonpath(self.clash, '$.ws-opts.path') or jsonpath.jsonpath(self.clash, '$.ws-path')
+            if ws_path:
+                config['path'] = ws_path[0]
 
-class Clash(BaseConf):
-
-    def __init__(self, raw_node: dict):
-        self._raw_proxy = raw_node
-
-        self.name = ""
-        self.type = ""
-        self.server = ""
-        self.port = ""
-        self.uuid = ""
-        self.alterId = ""
-        self.cipher = ""
-
-        self.udp = False
-        self.skip_cert_verify = True
-
-        self.tls = False
-        self.servername = ""  # priority over wss host,sni
-
-        self.network = ""
-
-        self.ws_opts = ""
-        self.ws_path = ""
-        self.ws_host = ""
-
-        self.http_hosts = []
-
-    def check(self) -> bool:
-        proxy = self._raw_proxy
-        network = proxy.get('network', '')
-        protocol = proxy.get('type', '')
-        server = proxy.get('server', '')
-
-        # clash配置network为空，可能为ws,也可能为http
-        if protocol == 'vmess' and (network == "ws" or network == "http" or network == "") and check_ip(server):
-            return True
-        logger.debug(f'无效的clash proxy节点')
-        return False
-
-    def extract(self):
-        proxy = self._raw_proxy
-
-        self.name = proxy.get("name", "")
-        self.type = proxy.get('type', '')
-        self.server = proxy.get('server', '')
-        self.port = proxy.get("port", "")
-        self.uuid = proxy.get("uuid", "")
-        self.alterId = proxy.get("alterId")
-        self.cipher = proxy.get("cipher", "")
-
-        self.udp = proxy.get("udp", True)
-        self.tls = proxy.get("tls", False)
-        self.skip_cert_verify = proxy.get("skip-cert-verify", True)
-        self.servername = proxy.get("servername", "")
-
-        self.network = proxy.get("network", "http")  # clash配置network为空，可能为ws,也可能为http
-        proxy['network'] = self.network
-
-        self.ws_path = '/'
-        ws_path = jsonpath.jsonpath(proxy, '$.ws-opts.path')
-        if ws_path:
-            self.ws_path = ws_path[0]
-
-        # ws的host
-        ws_host = jsonpath.jsonpath(proxy, '$.ws-opts.headers.Host')
-        # tcp http的host
-        http_hosts = jsonpath.jsonpath(proxy, '$.http-opts.headers.Host')
-
-        if ws_host:
-            self.ws_host = ws_host[0]
-        elif http_hosts:
-            self.http_hosts = http_hosts[0]
+        self.v2 = config
 
     def change_host(self, host):
-        network = self._raw_proxy.get('network', 'http')  # clash配置network为空，可能为ws,也可能为http
-        self._raw_proxy['network'] = network
+        # v2
+        self.v2['host'] = host
+        if self.v2.get("tls"):
+            self.v2['sni'] = host
 
+        # clash
+        network = self.clash['network']
         if network == 'ws':
-            ws_path = None
-            if self._raw_proxy.get('ws-path'):
-                ws_path = self._raw_proxy.pop('ws-path')
-            if self._raw_proxy.get('ws-headers'):
-                self._raw_proxy.pop('ws-headers')
+            ws_path = '/'
+            if self.clash.get('ws-path'):
+                ws_path = self.clash.pop('ws-path')
+            if self.clash.get('ws-headers'):
+                self.clash.pop('ws-headers')
 
             # 新版ws-headers和ws-path设置,旧版2022会不支持
-            ws_opts = self._raw_proxy.get('ws-opts')
+            ws_opts = self.clash.get('ws-opts')
             if isinstance(ws_opts, dict):
-                if ws_path:
-                    ws_opts['path'] = ws_path
+                ws_opts['path'] = ws_path
 
                 ws_opts_headers = ws_opts.get('headers')
                 if isinstance(ws_opts_headers, dict):
@@ -276,73 +211,62 @@ class Clash(BaseConf):
                         "Host": host
                     }
             else:
-                self._raw_proxy["ws-opts"] = {
-                    "path": ws_path if ws_path else '/',
+                self.clash["ws-opts"] = {
+                    "path": ws_path,
                     "headers": {
                         "Host": host
                     }
                 }
+
+            if self.clash.get('tls'):
+                self.clash['servername'] = host
         elif network == 'http':
-            self._raw_proxy["http-opts"] = {
+            self.clash["http-opts"] = {
                 "headers": {
                     "Host": [host]
                 }
             }
 
-        self._raw_proxy['servername'] = host
-
     def generate_v2rayn_link(self):
-        self.extract()
-        config = {
-            'v': "2",
-            'ps': self.name,
-            'add': self.server,
-            'port': self.port,
-            'id': self.uuid,
-            'aid': self.alterId,
-            'scy': 'auto',
-            'net': self.network,
-            'type': 'none',
-            'host': self.ws_host,
-            'path': "/",
-            'tls': "",
-            'sni': ""
-        }
-
-        if self.cipher:
-            config['scy'] = self.cipher
-
-        if self.network == 'http':
-            config['net'] = 'tcp'
-            config['type'] = 'http'
-            config['host'] = ','.join(self.http_hosts)
-
-        if self.ws_path:
-            config["path"] = self.ws_path
-
-        if self.tls:
-            config["tls"] = self.tls
-
-        if self.tls and self.network == "ws":
-            config["sni"] = self.ws_host
-
-        return self.type + "://" + base64_encode(json.dumps(config, ensure_ascii=False))
-
-    def generate_clash_proxy(self):
-        return self._raw_proxy
+        return self._protocol + "://" + base64_encode(json.dumps(self.v2, ensure_ascii=False))
 
     def generate_surfboard_proxy(self):
-        self.extract()
-        ws = 'true' if self.network == 'ws' else 'false'
-        ws_headers = f'host:{self.ws_host}'
-        tls = 'true' if self.tls else 'false'
-        skip_cert_verify = 'true' if self.skip_cert_verify else 'false'
-        if ws:
-            proxy = self.name, f'{self.type}, {self.server}, {self.port}, username={self.uuid}, ws={ws}, tls={tls}, ws-path={self.ws_path}, ws-headers={ws_headers}, skip-cert-verify={skip_cert_verify}, sni={self.servername}'
+        ws = 'true' if self.v2["net"] == 'ws' else 'false'
+        ws_headers = f'Host:{self.v2.get("host", "")}'
+        tls = 'true' if self.v2.get("tls") else 'false'
+        if ws == 'true':
+            proxy = self.v2[
+                        "ps"], f'{self._protocol}, {self.v2["add"]}, {self.v2["port"]}, username={self.v2["id"]}, ws={ws}, tls={tls}, ws-path={self.v2.get("path", "/")}, ws-headers={ws_headers}, skip-cert-verify=true, sni={self.v2.get("sni", "")}'
             return proxy
         else:
-            logger.info('surfboard不支持http免流')
+            logger.info('surfboard暂不支持http免流')
             return ""
 
-    def __str__(self):
-        return str(vars(self))
+    def generate_clash_proxy(self):
+        return self.clash
+
+    def generate_leaf_proxy(self):
+        ws = 'true' if self.v2["net"] == 'ws' else 'false'
+        ws_host = self.v2.get("host", "")
+        tls = 'true' if self.v2.get("tls") else 'false'
+        if ws == 'true':
+            proxy = self.v2[
+                        "ps"], f'{self._protocol}, {self.v2["add"]}, {self.v2["port"]}, username={self.v2["id"]}, ws={ws}, tls={tls}, ws-path={self.v2.get("path", "/")}, ws_host={ws_host}, sni={self.v2.get("sni", "")}'
+            return proxy
+        else:
+            logger.info('Leaf暂不支持http免流')
+            return ""
+
+
+if __name__ == '__main__':
+    proxy = "vmess://ew0KICAidiI6ICIyIiwNCiAgInBzIjogIkhvbmdLb25nIiwNCiAgImFkZCI6ICIyMC4xODcuMTE3LjMxIiwNCiAgInBvcnQiOiAiMzYzNTMiLA0KICAiaWQiOiAiYjhkZWU0YTItNzViNi00ZTM2LWZjMjUtZmIxN2U2NGIxOThlIiwNCiAgImFpZCI6ICIwIiwNCiAgInNjeSI6ICJhdXRvIiwNCiAgIm5ldCI6ICJ3cyIsDQogICJ0eXBlIjogIm5vbmUiLA0KICAiaG9zdCI6ICIiLA0KICAicGF0aCI6ICIvIiwNCiAgInRscyI6ICIiLA0KICAic25pIjogIiINCn0="
+    proxy = {"name": "🇭🇰 试用|香港06解锁流媒体", "type": "vmess", "server": "test.airnode.xyz", "port": 15806,
+             "uuid": "d645c3c0-b155-3769-bd5a-57315a6333fd", "alterId": 1, "cipher": "auto", "udp": True,
+             "network": "ws", "ws-path": "/blx", "ws-headers": {"Host": "test.airnode.xyz"}}
+    node = ProxyNode()
+    node.load(proxy)
+    node.change_host("a.189.cn")
+    print(node.generate_v2rayn_link())
+    print(node.generate_clash_proxy())
+    print(node.generate_surfboard_proxy())
+    print(node.generate_leaf_proxy())

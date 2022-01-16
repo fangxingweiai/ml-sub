@@ -12,7 +12,7 @@ from loguru import logger
 from starlette.requests import Request
 from starlette.templating import Jinja2Templates
 
-from config_models import V2rayN, Clash
+from config_models import ProxyNode
 from helper import base64_decode, base64_encode, get_request, remove_special_characters
 
 # 设置日志
@@ -40,9 +40,9 @@ def v2sub_2_nodelist(sub_content):
     nodes = []
     for link in raw_links:
         link = link.strip()
-        vn = V2rayN(link)
+        vn = ProxyNode()
         logger.debug('检查v2节点有效性')
-        if vn.check():
+        if vn.load(link):
             logger.debug(f'订阅中的v2节点: {link}')
             nodes.append(vn)
 
@@ -50,6 +50,7 @@ def v2sub_2_nodelist(sub_content):
 
 
 def clashsub_2_nodelist(sub_content):
+    sub_content = sub_content.replace('@', '')
     dict_clash_content = yaml.load(sub_content, Loader=yaml.FullLoader)
     proxies = dict_clash_content.get("proxies", None)
     proxy_providers = dict_clash_content.get("proxy-providers", None)
@@ -58,9 +59,9 @@ def clashsub_2_nodelist(sub_content):
     if proxies:
         logger.debug(f'直接获取clash中的proxies：{proxies}')
         for proxy in proxies:
-            c = Clash(proxy)
+            c = ProxyNode()
             logger.debug('检查Clash节点有效性')
-            if c.check():
+            if c.load(proxy):
                 logger.debug(f"clash proxies中的节点: {c}")
                 nodes.append(c)
 
@@ -194,7 +195,7 @@ def generate_sub(nodes, client):
         auto_proxy = 'url-test'
 
         sub.add_section("Rule")
-        sub.set('Rule', '', 'FINAL,proxy')
+        sub.set('Rule', '', 'FINAL,select')
 
         # Surfboard中节点重名会运行不了，故直接用序号代替原来名字。解析Surfboard原订阅时，订阅内容中包含一些特殊字符，通过处理也会导致节点名字不完整甚至名字完全丢失。
         proxy_name = 0
@@ -218,7 +219,7 @@ def generate_sub(nodes, client):
         with StringIO() as f:
             sub.write(f)
             s = f.getvalue()
-            sub = re.sub(r'\s=\s+FINAL,proxy', "FINAL, select", s)
+            sub = re.sub(r'\s=\s+FINAL,select', "FINAL, select", s)
     return sub
 
 
@@ -243,9 +244,9 @@ def sub(url: str, host: str, client: str):
             node_list = sub_2_nodelist(i)
             nodes.extend(node_list)
         else:
-            vn = V2rayN(i)
+            vn = ProxyNode()
             logger.debug('检查v2节点有效性')
-            if vn.check():
+            if vn.load(i):
                 logger.info(f"v2节点，直接添加: {i}")
                 nodes.append(vn)
 
