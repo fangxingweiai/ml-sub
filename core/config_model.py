@@ -229,7 +229,7 @@ class ProxyNode(object):
             name = self.v2['ps']
             protocol = self._protocol
             host = ', ' + self.v2['add']
-            port = ', ' + self.v2['port']
+            port = f", {self.v2['port']}"
             uuid = ', username=' + self.v2['id']
             ws = ', ws=' + ws
             ws_path = ', ws-path=' + self.v2.get("path", "/")
@@ -254,7 +254,7 @@ class ProxyNode(object):
             name = self.v2['ps']
             protocol = self._protocol
             host = ', ' + self.v2['add']
-            port = ', ' + self.v2['port']
+            port = f", {self.v2['port']}"
             uuid = ', username=' + self.v2['id']
             ws = ', ws=' + ws
             ws_path = ', ws-path=' + self.v2.get("path", "/")
