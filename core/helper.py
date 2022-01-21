@@ -41,7 +41,7 @@ def check_ip(ip):
 _request = None
 
 
-def get_request(enable_proxy=False):
+def get_request(enable_proxy=False, proxies_=None):
     global _request
     if _request:
         return _request
@@ -49,10 +49,13 @@ def get_request(enable_proxy=False):
         def inner(url):
             proxies = None
             if enable_proxy:
-                proxies = {
-                    "http": "http://127.0.0.1:7890",
-                    'https': 'https://127.0.0.1:7890'
-                }
+                if proxies_:
+                    proxies = proxies_
+                else:
+                    proxies = {
+                        "http": "http://127.0.0.1:7890",
+                        'https': 'http://127.0.0.1:7890'
+                    }
 
             headers = {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.159 Safari/537.36'}
@@ -70,5 +73,4 @@ def remove_special_characters(content):
 
 
 if __name__ == '__main__':
-    r = check_ip('262349039')
-    print(r)
+    pass

@@ -132,5 +132,4 @@ dmypy.json
 run.txt
 test.py
 .idea/
-Pipfile
 /test.yaml

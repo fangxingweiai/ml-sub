@@ -3,7 +3,7 @@ import json
 import jsonpath
 from loguru import logger
 
-from helper import base64_encode, base64_decode, check_ip
+from core.helper import base64_encode, check_ip, base64_decode
 
 
 class ProxyNode(object):
@@ -12,32 +12,6 @@ class ProxyNode(object):
         self._protocol = None
         # v2rayN 分享链接格式：https://github.com/2dust/v2rayN/wiki/%E5%88%86%E4%BA%AB%E9%93%BE%E6%8E%A5%E6%A0%BC%E5%BC%8F%E8%AF%B4%E6%98%8E(ver-2)
         self.v2 = None
-        # {
-        #     "v": "2",
-        #     "ps": "",
-        #     "add": "",
-        #     "port": "",
-        #     "id": "",
-        #     "aid": "",
-        #     "scy": "",
-        #     "net": "",  # tcp\kcp\ws\h2\quic
-        #     "type": "",  # (none\http\srtp\utp\wechat-video) *tcp or kcp or QUIC
-        #
-        #     "host": "",
-        #     # 1)http(tcp)->host中间逗号(,)隔开
-        #     # 2)ws->host
-        #     # 3)h2->host
-        #     # 4)QUIC->securty
-        #
-        #     "path": "",
-        #     # 1)ws->path
-        #     # 2)h2->path
-        #     # 3)QUIC->key/Kcp->seed
-        #     # 4)grpc->serviceName
-        #
-        #     "tls": "",  # tls :str
-        #     "sni": "",
-        # }
 
         self.clash = None
 
@@ -99,13 +73,13 @@ class ProxyNode(object):
             "name": self.v2["ps"],
             "type": self._protocol,
             "server": self.v2["add"],
-            "port": self.v2["port"],
+            "port": int(self.v2["port"]),
             "uuid": self.v2["id"],
-            "alterId": self.v2["aid"],
+            "alterId": int(self.v2["aid"]),
             "cipher": self.v2.get("scy") or 'auto',
 
             # ws
-            "tls": True if self.v2.get("tls") else False,
+            "tls": True if self.v2.get("tls") == 'tls' else False,
             # "skip-cert-verify": True,
             "servername": self.v2.get("sni", ""),  # priority over wss host
 
@@ -186,7 +160,7 @@ class ProxyNode(object):
     def change_host(self, host):
         # v2
         self.v2['host'] = host
-        if self.v2.get("tls"):
+        if self.v2.get("tls") == 'tls':
             self.v2['sni'] = host
 
         # clash
@@ -233,10 +207,21 @@ class ProxyNode(object):
     def generate_surfboard_proxy(self):
         ws = 'true' if self.v2["net"] == 'ws' else 'false'
         ws_headers = f'Host:{self.v2.get("host", "")}'
-        tls = 'true' if self.v2.get("tls") else 'false'
+        tls = 'true' if self.v2.get("tls") == 'tls' else 'false'
+
         if ws == 'true':
-            proxy = self.v2[
-                        "ps"], f'{self._protocol}, {self.v2["add"]}, {self.v2["port"]}, username={self.v2["id"]}, ws={ws}, tls={tls}, ws-path={self.v2.get("path", "/")}, ws-headers={ws_headers}, skip-cert-verify=true, sni={self.v2.get("sni", "")}'
+            name = self.v2['ps']
+            protocol = self._protocol
+            host = ', ' + self.v2['add']
+            port = ', ' + self.v2['port']
+            uuid = ', username=' + self.v2['id']
+            ws = ', ws=' + ws
+            ws_path = ', ws-path=' + self.v2.get("path", "/")
+            ws_headers = ', ws-headers=' + ws_headers
+            sni = ', sni=' + self.v2.get("sni", "") if tls == "true" else ""
+            tls = ', tls=' + tls
+
+            proxy = name, protocol + host + port + uuid + ws + ws_path + ws_headers + tls + sni
             return proxy
         else:
             logger.info('surfboard暂不支持http免流')
@@ -248,10 +233,20 @@ class ProxyNode(object):
     def generate_leaf_proxy(self):
         ws = 'true' if self.v2["net"] == 'ws' else 'false'
         ws_host = self.v2.get("host", "")
-        tls = 'true' if self.v2.get("tls") else 'false'
+        tls = 'true' if self.v2.get("tls") == 'tls' else 'false'
         if ws == 'true':
-            proxy = self.v2[
-                        "ps"], f'{self._protocol}, {self.v2["add"]}, {self.v2["port"]}, username={self.v2["id"]}, ws={ws}, tls={tls}, ws-path={self.v2.get("path", "/")}, ws_host={ws_host}, sni={self.v2.get("sni", "")}'
+            name = self.v2['ps']
+            protocol = self._protocol
+            host = ', ' + self.v2['add']
+            port = ', ' + self.v2['port']
+            uuid = ', username=' + self.v2['id']
+            ws = ', ws=' + ws
+            ws_path = ', ws-path=' + self.v2.get("path", "/")
+            ws_host = ', ' + ws_host
+            sni = ', sni=' + self.v2.get("sni", "") if tls == "true" else ""
+            tls = ', tls=' + tls
+
+            proxy = name, protocol + host + port + uuid + ws + ws_path + ws_host + tls + sni
             return proxy
         else:
             logger.info('Leaf暂不支持http免流')
@@ -259,14 +254,6 @@ class ProxyNode(object):
 
 
 if __name__ == '__main__':
-    proxy = "vmess://ew0KICAidiI6ICIyIiwNCiAgInBzIjogIkhvbmdLb25nIiwNCiAgImFkZCI6ICIyMC4xODcuMTE3LjMxIiwNCiAgInBvcnQiOiAiMzYzNTMiLA0KICAiaWQiOiAiYjhkZWU0YTItNzViNi00ZTM2LWZjMjUtZmIxN2U2NGIxOThlIiwNCiAgImFpZCI6ICIwIiwNCiAgInNjeSI6ICJhdXRvIiwNCiAgIm5ldCI6ICJ3cyIsDQogICJ0eXBlIjogIm5vbmUiLA0KICAiaG9zdCI6ICIiLA0KICAicGF0aCI6ICIvIiwNCiAgInRscyI6ICIiLA0KICAic25pIjogIiINCn0="
-    proxy = {"name": "🇭🇰 试用|香港06解锁流媒体", "type": "vmess", "server": "test.airnode.xyz", "port": 15806,
-             "uuid": "d645c3c0-b155-3769-bd5a-57315a6333fd", "alterId": 1, "cipher": "auto", "udp": True,
-             "network": "ws", "ws-path": "/blx", "ws-headers": {"Host": "test.airnode.xyz"}}
-    node = ProxyNode()
-    node.load(proxy)
-    node.change_host("a.189.cn")
-    print(node.generate_v2rayn_link())
-    print(node.generate_clash_proxy())
-    print(node.generate_surfboard_proxy())
-    print(node.generate_leaf_proxy())
+    proxy = 'Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTp4RzBqamNMYmpaN1dAMzQuMjExLjU4Ljg5OjMyOTY5#%e7%be%8e%e5%9b%bd1%7cSC+X+Alink'
+    a = base64_decode(proxy)
+    print(a)

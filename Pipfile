@@ -1,0 +1,20 @@
+[[source]]
+url = "https://pypi.mirrors.ustc.edu.cn/simple/"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+fastapi = "==0.68.1"
+loguru = "==0.5.3"
+pyyaml = "==5.4.1"
+requests = "==2.26.0"
+uvicorn = "==0.15.0"
+jsonpath = "*"
+urllib3 = "==1.25.11"
+jinja2 = "*"
+gunicorn = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.9"
