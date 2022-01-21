@@ -125,7 +125,7 @@ class ProxyNode(object):
             self.clash.pop("servername")
             self.clash.pop("ws-opts")
 
-        if not self.clash.get('tls') and self.clash.get('servername'):
+        if not self.clash.get('tls') and 'servername' in self.clash:
             self.clash.pop('servername')
 
     def clash_to_v2(self):
