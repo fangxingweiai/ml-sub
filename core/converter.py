@@ -168,6 +168,8 @@ def generate_sub(nodes: Union[ProxyNode, List[ProxyNode]], client: str) -> str:
 
         sub.add_section("General")
         sub.set("General", "dns-server", "system, 8.8.8.8, 8.8.4.4")
+        sub.set("General", "skip-proxy",
+                "127.0.0.1, 192.168.0.0/16, 10.0.0.0/8, 172.16.0.0/12, 100.64.0.0/10, localhost, *.local")
         sub.set("General", "proxy-test-url", "http://www.gstatic.com/generate_204")
 
         sub.add_section("Proxy")

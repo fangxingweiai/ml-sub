@@ -46,10 +46,10 @@ class ProxyNode(object):
                     logger.debug(f'无效的network: {network}')
                     return False
 
-                tls = v2_json_node.get('tls')
-                if tls == 'tls':
-                    logger.debug('有tls，无法免流')  # ？？？
-                    return False
+                # tls = v2_json_node.get('tls')
+                # if tls == 'tls':
+                #     logger.debug('有tls，无法免流')  # ？？？
+                #     return False
 
                 self.v2 = v2_json_node
                 self.v2_to_clash()
@@ -58,10 +58,10 @@ class ProxyNode(object):
                 return False
             return True
         elif isinstance(proxy_node, dict):
-            tls = proxy_node.get('tls')
-            if tls:
-                logger.debug('有tls，无法免流')  # ？？？
-                return False
+            # tls = proxy_node.get('tls')
+            # if tls:
+            #     logger.debug('有tls，无法免流')  # ？？？
+            #     return False
 
             network = proxy_node.get('network', '')
             protocol = proxy_node.get('type', '')
@@ -93,7 +93,7 @@ class ProxyNode(object):
 
             # ws
             "tls": True if self.v2.get("tls") == 'tls' else False,
-            # "skip-cert-verify": True,
+            "skip-cert-verify": True,
             "servername": self.v2.get("sni", ""),  # priority over wss host
 
             # common
@@ -121,7 +121,7 @@ class ProxyNode(object):
         elif self.v2["net"] == 'tcp':
             self.clash['network'] = 'http'
             self.clash.pop("tls")
-            # self.clash.pop("skip-cert-verify")
+            self.clash.pop("skip-cert-verify")
             self.clash.pop("servername")
             self.clash.pop("ws-opts")
 
@@ -224,6 +224,7 @@ class ProxyNode(object):
         ws = 'true' if self.v2["net"] == 'ws' else 'false'
         ws_headers = f'Host:{self.v2.get("host", "")}'
         tls = 'true' if self.v2.get("tls") == 'tls' else 'false'
+        alterId = self.clash['alterId']
 
         if ws == 'true':
             name = self.v2['ps']
@@ -236,8 +237,10 @@ class ProxyNode(object):
             ws_headers = ', ws-headers=' + ws_headers
             sni = ', sni=' + self.v2.get("sni", "") if tls == "true" else ""
             tls = ', tls=' + tls
+            vmess_aead = f", vmess-aead={'true' if alterId == 0 else 'false'}"
+            skip_cert_verify = ', skip-cert-verify=true'
 
-            proxy = name, protocol + host + port + uuid + ws + ws_path + ws_headers + tls + sni
+            proxy = name, protocol + host + port + uuid + ws + ws_path + ws_headers + tls + sni + vmess_aead + skip_cert_verify
             return proxy
         else:
             logger.info('surfboard暂不支持http免流')
