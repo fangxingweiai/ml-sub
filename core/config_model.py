@@ -222,7 +222,7 @@ class ProxyNode(object):
                 self.password = proxy_node.get('password', '')
                 self.udp = proxy_node.get('udp')
             elif self.protocol == 'vmess':
-                self.uuid = proxy_node.get('port', '')
+                self.uuid = proxy_node.get('uuid', '')
                 self.alter_id = proxy_node.get('alterId', '')
                 self.security = proxy_node.get('cipher', '')
                 self.udp = proxy_node.get('udp')
@@ -515,6 +515,10 @@ if __name__ == '__main__':
     node = "trojan://password@104.16.124.42:443/?flow=xtls-rprx-origin&security=tls&sni=host.com&alpn=h2%2Chttp%2F1.1&type=tcp&headerType=http&host=host.com#name"
     node = "vless://eb0f552d-c314-491a-b5e1-f0ee78cd7af6@220.32.41.124:443?encryption=none&flow=xtls-rprx-direct&security=tls&sni=vless.com&alpn=h2%2Chttp%2F1.1&type=ws&host=vless.com&path=%2Fvless.path#vless_name"
     node = "vless://eb0f552d-c314-491a-b5e1-f0ee78cd7af6@220.32.41.124:443?encryption=none&flow=xtls-rprx-direct&security=tls&sni=vless.com&alpn=h2%2Chttp%2F1.1&type=tcp&headerType=http&host=vless.com#vless_name"
+    node = {'name': 'HK_2702_12.40Mb', 'server': 'yyyy.wwwbhjy.com', 'port': 2443, 'type': 'vmess',
+            'uuid': 'dee32eb7-e190-4c6f-dd27-aa9c82cd5490', 'alterId': 0, 'cipher': 'auto', 'tls': True,
+            'skip-cert-verify': True, 'network': 'ws', 'ws-opts': {'path': '/8a76fb13/', 'headers': {
+            'Host': '%7B%22HOST%22:%22yyyy.wwwbhjy.com%22,%22Host%22:%22yyyy.wwwbhjy.com%22%7D'}}, 'udp': True}
     p.load(node)
     print(p)
-    print(p.generate_v2rayn_link())
+    print(p.generate_surfboard_proxy())
