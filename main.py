@@ -73,7 +73,7 @@ def sub(url: str, host: str, client: str):
     logger.info(f"用户输入总节点个数为: {len(nodes)}")
 
     if nodes:
-        if host == 'd':
+        if host:
             logger.info(f"将过滤完的节点的host用{host}替换")
             change_host(nodes, host)
 
