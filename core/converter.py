@@ -198,7 +198,7 @@ def generate_ml_sub(nodes: Union[ProxyNode, List[ProxyNode]], client: str) -> st
         for node in nodes:
             sf_proxy = node.generate_surfboard_proxy()
             if sf_proxy:
-                logger.debug(f'生成Surfboard节点: {sf_proxy[0]+" = "+sf_proxy[1]}')
+                logger.debug(f'生成Surfboard节点: {sf_proxy[0]} = {sf_proxy[1]}')
                 _, conf = sf_proxy
 
                 proxy_name += 1
@@ -242,7 +242,7 @@ def generate_ml_sub(nodes: Union[ProxyNode, List[ProxyNode]], client: str) -> st
         for node in nodes:
             leaf_proxy = node.generate_leaf_proxy()
             if leaf_proxy:
-                logger.debug(f'生成Leaf节点: {leaf_proxy[0]+" = "+leaf_proxy[1]}')
+                logger.debug(f'生成Leaf节点: {leaf_proxy[0]} = {leaf_proxy[1]}')
                 _, conf = leaf_proxy
 
                 proxy_name += 1
@@ -440,7 +440,7 @@ def generate_sub(nodes: Union[ProxyNode, List[ProxyNode]], client: str) -> str:
         for node in nodes:
             sf_proxy = node.generate_surfboard_proxy()
             if sf_proxy:
-                logger.debug(f'生成Surfboard节点: {sf_proxy[0]+" = "+sf_proxy[1]}')
+                logger.debug(f'生成Surfboard节点: {sf_proxy[0]} = {sf_proxy[1]}')
                 _, conf = sf_proxy
 
                 proxy_name += 1
@@ -491,7 +491,8 @@ def generate_sub(nodes: Union[ProxyNode, List[ProxyNode]], client: str) -> str:
         for node in nodes:
             leaf_proxy = node.generate_leaf_proxy()
             if leaf_proxy:
-                logger.debug(f'生成Leaf节点: {leaf_proxy[0]+" = "+leaf_proxy[1]}')
+                print(leaf_proxy)
+                logger.debug(f'生成Leaf节点: {leaf_proxy[0]} = {leaf_proxy[1]}')
                 _, conf = leaf_proxy
 
                 proxy_name += 1
