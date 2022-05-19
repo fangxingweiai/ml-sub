@@ -282,6 +282,7 @@ class ProxyNode(object):
                 self.udp = proxy_node.get('udp')
 
         if self.address:
+            self.name = self.name.strip()
             return True
         else:
             logger.warning(f'无法识别节点: {proxy_node}')

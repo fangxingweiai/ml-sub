@@ -1,17 +1,12 @@
-import configparser
-import json
 import os
 import re
-from io import StringIO
 from typing import Union, List
 
-import requests
 import yaml
 from loguru import logger
 
 from core.config_model import ProxyNode
-from core.helper import base64_encode, remove_special_characters, base64_decode
-import urllib.request
+from core.helper import base64_encode, base64_decode, check_and_rename
 
 
 def _v2sub_2_nodelist(sub_content):
@@ -83,16 +78,17 @@ def change_host(nodes: Union[ProxyNode, List[ProxyNode]], host: str):
         node.host = host
 
 
-def generate_ml_sub(nodes: Union[ProxyNode, List[ProxyNode]], client: str) -> str:
+def generate_sub(nodes: Union[ProxyNode, List[ProxyNode]], client: str, ml: bool = False) -> str:
     if isinstance(nodes, ProxyNode):
         nodes = [nodes]
 
-    tmp = []
-    for i in nodes:
-        if i.protocol == 'vmess' and (i.network == 'ws' or i.network == 'tcp'):
-            tmp.append(i)
-    nodes = tmp
-    logger.info(f'可用免流节点个数：{len(nodes)}')
+    if ml:
+        tmp = []
+        for i in nodes:
+            if i.protocol == 'vmess' and (i.network == 'ws' or i.network == 'tcp'):
+                tmp.append(i)
+        nodes = tmp
+        logger.info(f'可用免流节点个数：{len(nodes)}')
 
     nodes.sort(key=lambda x: x.protocol)
 
@@ -107,8 +103,8 @@ def generate_ml_sub(nodes: Union[ProxyNode, List[ProxyNode]], client: str) -> st
         sub = base64_encode(os.linesep.join(v2_links))
     elif client == "Clash":
         sub = {
-            "port": 7891,
-            "socks-port": 7890,
+            "port": 1087,
+            "socks-port": 1086,
             # "mixed-port": 7890,
             "allow-lan": False,
             "mode": "Rule",
@@ -142,152 +138,7 @@ def generate_ml_sub(nodes: Union[ProxyNode, List[ProxyNode]], client: str) -> st
             "proxy-groups": [
                 {"name": "🌐 Select",
                  "type": "select",
-                 "proxies": ['♻ Auto', 'DIRECT', 'REJECT']},
-                {"name": "♻ Auto",
-                 "type": "url-test",
-                 "proxies": [],
-                 "url": "http://www.gstatic.com/generate_204",
-                 "interval": 600,
-                 "lazy": True}
-            ],
-            'rules': ["MATCH,🌐 Select"]
-        }
-
-        # clash中节点重名会运行不了，故直接用序号代替原来名字。解析clash原订阅时，订阅内容中包含一些特殊字符，通过处理也会导致节点名字不完整甚至名字完全丢失。
-        proxy_name = 0
-
-        proxies = sub['proxies']
-        proxy_names = sub["proxy-groups"][0]["proxies"]
-        auto_names = sub["proxy-groups"][1]["proxies"]
-        for node in nodes:
-            proxy = node.generate_clash_proxy()
-            logger.debug(f'生成clash节点: {proxy}')
-            if proxy:
-                proxy_name += 1
-                proxy_name_str = str(proxy_name)
-
-                proxy["name"] = proxy_name_str
-                proxies.append(proxy)
-                proxy_names.append(proxy_name_str)
-                auto_names.append(proxy_name_str)
-
-        sub = yaml.dump(sub)
-    elif client == "Surfboard":
-        sub = configparser.ConfigParser()
-
-        sub.add_section("General")
-        sub.set("General", "dns-server", "system, 8.8.8.8, 8.8.4.4")
-        sub.set("General", "skip-proxy",
-                "127.0.0.1, 192.168.0.0/16, 10.0.0.0/8, 172.16.0.0/12, 100.64.0.0/10, localhost, *.local")
-        sub.set("General", "proxy-test-url", "http://www.gstatic.com/generate_204")
-
-        sub.add_section("Proxy")
-
-        sub.add_section("Proxy Group")
-        # sub.set('Proxy Group', 'Proxy', 'select,DIRECT,REJECT')
-        select_proxy = 'select, auto'
-        # AutoTestGroup = url-test, ProxySOCKS5, ProxySOCKS5TLS, url=http://www.gstatic.com/generate_204, interval=600, tolerance=100, timeout=5
-        auto_proxy = 'url-test'
-
-        sub.add_section("Rule")
-        sub.set('Rule', '', 'FINAL,ml')
-
-        # Surfboard中节点重名会运行不了，故直接用序号代替原来名字。解析Surfboard原订阅时，订阅内容中包含一些特殊字符，通过处理也会导致节点名字不完整甚至名字完全丢失。
-        proxy_name = 0
-
-        for node in nodes:
-            sf_proxy = node.generate_surfboard_proxy()
-            if sf_proxy:
-                logger.debug(f'生成Surfboard节点: {sf_proxy[0]} = {sf_proxy[1]}')
-                _, conf = sf_proxy
-
-                proxy_name += 1
-                proxy_name_str = str(proxy_name)
-
-                sub.set('Proxy', proxy_name_str, conf)
-                select_proxy = select_proxy + ', ' + proxy_name_str
-                auto_proxy = auto_proxy + ', ' + proxy_name_str
-        auto_proxy = auto_proxy + ', url=http://www.gstatic.com/generate_204, interval=600, tolerance=100, timeout=5'
-        sub.set('Proxy Group', 'ml', select_proxy)
-        sub.set('Proxy Group', 'auto', auto_proxy)
-
-        with StringIO() as f:
-            sub.write(f)
-            s = f.getvalue()
-            sub = re.sub(r'\s=\s+FINAL,ml', "FINAL, ml", s)
-    elif client == "Leaf":
-        sub = configparser.ConfigParser()
-
-        sub.add_section("General")
-        sub.set("General", "loglevel", "off")
-        sub.set("General", "dns-server", "1.1.1.1, 8.8.8.8, 114.114.114.114, 223.5.5.5")
-        # sub.set("General", "proxy-test-url", "http://www.gstatic.com/generate_204")
-        sub.set("General", "interface", "127.0.0.1")
-        sub.set("General", "port", "7891")
-        sub.set("General", "socks-interface", "127.0.0.1")
-        sub.set("General", "socks-port", "7890")
-
-        sub.add_section("Proxy")
-
-        sub.add_section("Proxy Group")
-        # AutoTestGroup = url-test, ProxySOCKS5, ProxySOCKS5TLS, url=http://www.gstatic.com/generate_204, interval=600, tolerance=100, timeout=5
-        fallback_group = 'fallback'
-
-        sub.add_section("Rule")
-        sub.set('Rule', '', 'FINAL,ml')
-
-        # Surfboard中节点重名会运行不了，故直接用序号代替原来名字。解析Surfboard原订阅时，订阅内容中包含一些特殊字符，通过处理也会导致节点名字不完整甚至名字完全丢失。
-        proxy_name = 0
-
-        for node in nodes:
-            leaf_proxy = node.generate_leaf_proxy()
-            if leaf_proxy:
-                logger.debug(f'生成Leaf节点: {leaf_proxy[0]} = {leaf_proxy[1]}')
-                _, conf = leaf_proxy
-
-                proxy_name += 1
-                proxy_name_str = str(proxy_name)
-
-                sub.set('Proxy', proxy_name_str, conf)
-
-                fallback_group = fallback_group + ', ' + proxy_name_str
-        fallback_group = fallback_group + ', interval=600, timeout=5'
-        sub.set('Proxy Group', 'ml', fallback_group)
-
-        with StringIO() as f:
-            sub.write(f)
-            s = f.getvalue()
-            sub = re.sub(r'\s=\s+FINAL,ml', "FINAL, ml", s)
-    return sub
-
-
-def generate_sub(nodes: Union[ProxyNode, List[ProxyNode]], client: str) -> str:
-    if isinstance(nodes, ProxyNode):
-        nodes = [nodes]
-
-    nodes.sort(key=lambda x: x.protocol)
-
-    sub = ""
-    if client == "v2rayN":
-        v2_links = []
-        for node in nodes:
-            proxy = node.generate_v2rayn_link()
-            logger.debug(f'生成v2节点: {proxy}')
-            if proxy:
-                v2_links.append(proxy)
-        sub = base64_encode(os.linesep.join(v2_links))
-    elif client == "Clash":
-        sub = {
-            "mixed-port": 7890,
-            "allow-lan": False,
-            "mode": "Rule",
-            "log-level": "silent",
-            "external-controller": "127.0.0.1:9090",
-            'proxies': [],
-            "proxy-groups": [
-                {"name": "🌐 Select",
-                 "type": "select",
-                 "proxies": ['♻ Auto', 'DIRECT', 'REJECT']},
+                 "proxies": ['♻ Auto']},
                 {"name": "♻ Auto",
                  "type": "url-test",
                  "proxies": [],
@@ -393,127 +244,109 @@ def generate_sub(nodes: Union[ProxyNode, List[ProxyNode]], client: str) -> str:
             ]
         }
 
-        # clash中节点重名会运行不了，故直接用序号代替原来名字。解析clash原订阅时，订阅内容中包含一些特殊字符，通过处理也会导致节点名字不完整甚至名字完全丢失。
-        proxy_name = 0
+        if ml:
+            sub.pop('rule-providers')
+            sub.update({
+                'rules': ["MATCH,🌐 Select"]
+            })
 
         proxies = sub['proxies']
         proxy_names = sub["proxy-groups"][0]["proxies"]
         auto_names = sub["proxy-groups"][1]["proxies"]
+
+        proxy_nodes = []
         for node in nodes:
             proxy = node.generate_clash_proxy()
             logger.debug(f'生成clash节点: {proxy}')
 
             if proxy:
-                proxy_name += 1
-                proxy_name_str = str(proxy_name)
+                name = check_and_rename(proxy_nodes, proxy["name"])
+                proxy['name'] = name
 
-                proxy["name"] = proxy_name_str
                 proxies.append(proxy)
-                proxy_names.append(proxy_name_str)
-                auto_names.append(proxy_name_str)
+                proxy_names.append(name)
+                auto_names.append(name)
 
         sub = yaml.dump(sub)
     elif client == "Surfboard":
-        sub = configparser.ConfigParser()
+        sub_data = [
+            '[General]',
+            'dns-server = 8.8.8.8, 114.114.114.114',
+            'skip-proxy = 127.0.0.1, 192.168.0.0/16, 10.0.0.0/8, 172.16.0.0/12, 100.64.0.0/10, localhost, *.local',
+            'proxy-test-url = http://www.gstatic.com/generate_204',
+            '[Proxy]',
+            'Direct = direct',
+            'Reject = reject',
+        ]
 
-        sub.add_section("General")
-        sub.set("General", "dns-server", "system, 8.8.8.8, 8.8.4.4")
-        sub.set("General", "skip-proxy",
-                "127.0.0.1, 192.168.0.0/16, 10.0.0.0/8, 172.16.0.0/12, 100.64.0.0/10, localhost, *.local")
-        sub.set("General", "proxy-test-url", "http://www.gstatic.com/generate_204")
-
-        sub.add_section("Proxy")
-
-        sub.add_section("Proxy Group")
-        # sub.set('Proxy Group', 'Proxy', 'select,DIRECT,REJECT')
-        select_proxy = 'select, auto'
-        # AutoTestGroup = url-test, ProxySOCKS5, ProxySOCKS5TLS, url=http://www.gstatic.com/generate_204, interval=600, tolerance=100, timeout=5
-        auto_proxy = 'url-test'
-
-        sub.add_section("Rule")
-        sub.set('Rule', 'cn', 'geoip,cn,direct')
-        sub.set('Rule', 'proxy', 'FINAL,proxy')
-
-        # Surfboard中节点重名会运行不了，故直接用序号代替原来名字。解析Surfboard原订阅时，订阅内容中包含一些特殊字符，通过处理也会导致节点名字不完整甚至名字完全丢失。
-        proxy_name = 0
-
+        proxy_nodes = []
+        proxy_name_list = []
         for node in nodes:
-            sf_proxy = node.generate_surfboard_proxy()
-            if sf_proxy:
-                logger.debug(f'生成Surfboard节点: {sf_proxy[0]} = {sf_proxy[1]}')
-                _, conf = sf_proxy
+            proxy_node = node.generate_surfboard_proxy()
+            if proxy_node:
+                proxy_name, proxy_info = proxy_node
+                logger.debug(f'生成Surfboard节点: {proxy_name} = {proxy_info}')
 
-                proxy_name += 1
-                proxy_name_str = str(proxy_name)
+                name = check_and_rename(proxy_nodes, proxy_name)
+                sub_data.append(f'{name} = {proxy_info}')
+                proxy_name_list.append(name)
 
-                sub.set('Proxy', proxy_name_str, conf)
-                select_proxy = select_proxy + ', ' + proxy_name_str
-                auto_proxy = auto_proxy + ', ' + proxy_name_str
-        auto_proxy = auto_proxy + ', url=http://www.gstatic.com/generate_204, interval=600, tolerance=100, timeout=5'
-        sub.set('Proxy Group', 'proxies', select_proxy)
-        sub.set('Proxy Group', 'auto', auto_proxy)
+        names = ', '.join(proxy_name_list)
 
-        with StringIO() as f:
-            sub.write(f)
-            s = f.getvalue()
-            sub = re.sub(r'cn\s+=\s+geoip,cn,direct', "GEOIP,CN,DIRECT", s)
-            sub = re.sub(r'proxy\s+=\s+FINAL,proxy', "FINAL,proxies", sub)
+        sub_data.append('[Proxy Group]')
+        auto_group = f'Auto = url-test, {names}, url=http://www.gstatic.com/generate_204, interval=600, tolerance=100, timeout=5'
+        select_group = f'Proxy = select, Auto, {names}'
+        sub_data.append(auto_group)
+        sub_data.append(select_group)
+
+        sub_data.append('[Rule]')
+        if not ml:
+            sub_data.append('GEOIP, CN, Direct')
+        sub_data.append('FINAL, Proxy')
+
+        sub = os.linesep.join(sub_data)
     elif client == "Leaf":
-        sub = configparser.ConfigParser()
+        sub_data = [
+            '[General]',
+            'loglevel = info',
+            'dns-server = 8.8.8.8, 114.114.114.114',
+            'interface = 127.0.0.1',
+            'port = 1087',
+            'socks-interface = 127.0.0.1',
+            'socks-port = 1086',
+            '[Proxy]',
+            'Direct = direct',
+            'Reject = reject',
+        ]
 
-        sub.add_section("General")
-        sub.set("General", "loglevel", "off")
-        sub.set("General", "dns-server", "1.1.1.1, 8.8.8.8, 114.114.114.114, 223.5.5.5")
-        # sub.set("General", "proxy-test-url", "http://www.gstatic.com/generate_204")
-        sub.set("General", "interface", "127.0.0.1")
-        sub.set("General", "port", "7891")
-        sub.set("General", "socks-interface", "127.0.0.1")
-        sub.set("General", "socks-port", "7890")
-
-        sub.add_section("Proxy")
-        sub.set('Proxy', 'direct', 'direct')
-        sub.set('Proxy', 'reject', 'reject')
-
-        sub.add_section("Proxy Group")
-        # AutoTestGroup = url-test, ProxySOCKS5, ProxySOCKS5TLS, url=http://www.gstatic.com/generate_204, interval=600, tolerance=100, timeout=5
-        fallback_group = 'fallback'
-
-        sub.add_section("Rule")
-        sub.set('Rule', 'cn1', 'EXTERNAL, site:category-ads-all, reject')
-        sub.set('Rule', 'cn2', 'EXTERNAL, site:geolocation-!cn, proxy')
-        sub.set('Rule', 'cn3', 'EXTERNAL, site:cn, direct')
-        sub.set('Rule', 'cn4', 'GEOIP, cn, direct')
-        sub.set('Rule', 'cn5', 'FINAL, proxy')
-
-        # Surfboard中节点重名会运行不了，故直接用序号代替原来名字。解析Surfboard原订阅时，订阅内容中包含一些特殊字符，通过处理也会导致节点名字不完整甚至名字完全丢失。
-        proxy_name = 0
-
+        proxy_nodes = []
+        proxy_name_list = []
         for node in nodes:
-            leaf_proxy = node.generate_leaf_proxy()
-            if leaf_proxy:
-                print(leaf_proxy)
-                logger.debug(f'生成Leaf节点: {leaf_proxy[0]} = {leaf_proxy[1]}')
-                _, conf = leaf_proxy
+            proxy_node = node.generate_leaf_proxy()
+            if proxy_node:
+                proxy_name, proxy_info = proxy_node
+                logger.debug(f'生成Leaf节点: {proxy_name} = {proxy_info}')
 
-                proxy_name += 1
-                proxy_name_str = str(proxy_name)
+                name = check_and_rename(proxy_nodes, proxy_name)
+                sub_data.append(f'{name} = {proxy_info}')
+                proxy_name_list.append(name)
 
-                sub.set('Proxy', proxy_name_str, conf)
+        names = ', '.join(proxy_name_list)
 
-                fallback_group = fallback_group + ', ' + proxy_name_str
-        fallback_group = fallback_group + ', interval=600, timeout=5'
-        sub.set('Proxy Group', 'proxy', fallback_group)
+        sub_data.append('[Proxy Group]')
+        auto_group = f'Proxy = fallback, {names}, interval=600, timeout=5'
+        sub_data.append(auto_group)
 
-        with StringIO() as f:
-            sub.write(f)
-            s = f.getvalue()
-            sub = re.sub(r'cn1\s+=\s+EXTERNAL, site:category-ads-all, reject',
-                         "EXTERNAL, site:category-ads-all, reject", s)
-            sub = re.sub(r'cn2\s+=\s+EXTERNAL, site:geolocation-!cn, proxy', "EXTERNAL, site:geolocation-!cn, proxy",
-                         sub)
-            sub = re.sub(r'cn3\s+=\s+EXTERNAL, site:cn, direct', "EXTERNAL, site:cn, direct", sub)
-            sub = re.sub(r'cn4\s+=\s+GEOIP, cn, direct', "GEOIP, cn, direct", sub)
-            sub = re.sub(r'cn5\s+=\s+FINAL, proxy', "FINAL, proxy", sub)
+        sub_data.append('[Rule]')
+        if not ml:
+            sub_data.append('EXTERNAL, site:category-ads-all, Reject')
+            sub_data.append('EXTERNAL, site:geolocation-!cn, Proxy')
+            sub_data.append('EXTERNAL, site:cn, Direct')
+            sub_data.append('GEOIP, CN, Direct')
+        sub_data.append('FINAL, Proxy')
+
+        sub = os.linesep.join(sub_data)
+
     return sub
 
 
@@ -521,5 +354,9 @@ if __name__ == '__main__':
     p = ProxyNode()
     p.load(
         'vmess://eyJhZGQiOiAiYTMzLnYyLmdheSIsICJ2IjogIjIiLCAicHMiOiAiXHU1MTczXHU2Y2U4XHU3NTM1XHU2MmE1aHR0cHM6Ly90Lm1lL2FpZmVueGlhbmcyMDIwIiwgInBvcnQiOiAzMzc5MiwgImlkIjogImU1NWNkMTgyLTAxYjAtNGZiNy1hNTEwLTM2MzcwMWE0OTFjNSIsICJhaWQiOiAiMCIsICJuZXQiOiAid3MiLCAidHlwZSI6ICIiLCAiaG9zdCI6ICJhMzMudjIuZ2F5IiwgInBhdGgiOiAiLyIsICJ0bHMiOiAiIn0=')
-    c = generate_sub(p, 'Leaf')
+    p2 = ProxyNode()
+    p2.load(
+        'vmess://eyJhZGQiOiAiYTMzLnYyLmdheSIsICJ2IjogIjIiLCAicHMiOiAiXHU1MTczXHU2Y2U4XHU3NTM1XHU2MmE1aHR0cHM6Ly90Lm1lL2FpZmVueGlhbmcyMDIwIiwgInBvcnQiOiAzMzc5MiwgImlkIjogImU1NWNkMTgyLTAxYjAtNGZiNy1hNTEwLTM2MzcwMWE0OTFjNSIsICJhaWQiOiAiMCIsICJuZXQiOiAid3MiLCAidHlwZSI6ICIiLCAiaG9zdCI6ICJhMzMudjIuZ2F5IiwgInBhdGgiOiAiLyIsICJ0bHMiOiAiIn0=')
+
+    c = generate_sub([p, p2], 'Clash', True)
     print(c)

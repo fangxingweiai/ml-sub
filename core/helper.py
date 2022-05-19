@@ -73,6 +73,18 @@ def remove_special_characters(content):
     return bytes(content, "ascii", "ignore").decode()
 
 
+def check_and_rename(nodes: list, name):
+    while True:
+        if name not in nodes:
+            nodes.append(name)
+            return name
+        else:
+            name = name + '-重复'
+            r = check_and_rename(nodes, name)
+            if r:
+                return r
+
+
 def load_resources():
     # 从secrets加载
     links_str = os.environ.get('LINKS')
@@ -93,4 +105,11 @@ def save_conf(conf, dir_, filename):
 
 
 if __name__ == '__main__':
-    pass
+    a = []
+    b = check_and_rename(a, 'name')
+    c = check_and_rename(a, 'name')
+    d = check_and_rename(a, 'name')
+    print(a)
+    print(b)
+    print(c)
+    print(d)

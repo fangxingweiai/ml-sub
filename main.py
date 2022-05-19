@@ -11,7 +11,7 @@ from starlette.templating import Jinja2Templates
 
 import settings
 from core.config_model import ProxyNode
-from core.converter import change_host, sub_2_nodelist, generate_ml_sub, generate_sub
+from core.converter import change_host, sub_2_nodelist, generate_sub
 from core.helper import get_request
 
 # 设置日志
@@ -62,7 +62,8 @@ def resolve_proxies(proxies: Union[str, List]) -> List:
 
 
 @app.get("/sub")
-def sub(url: str, host: str, client: str):
+def sub(req: Request, url: str, host: str, client: str):
+    print(req.url)
     logger.info(f"用户需要转换的内容：{url}")
     node_content = url.strip().replace(' ', "")
     node_content = unquote(node_content)
@@ -78,12 +79,18 @@ def sub(url: str, host: str, client: str):
             change_host(nodes, host)
 
             logger.info(f'开始生成免流{client}订阅')
-            conf = generate_ml_sub(nodes, client)
+            conf = generate_sub(nodes, client, True)
+
+            if client == 'Surfboard':
+                conf = f'#!MANAGED-CONFIG {req.url} interval=60 strict=true\r\n{conf}'
             return PlainTextResponse(conf,
                                      headers={'Content-Disposition': 'filename=ml-sub', 'profile-update-interval': "2"})
         else:
             logger.info(f'开始生成{client}订阅')
             conf = generate_sub(nodes, client)
+
+            if client == 'Surfboard':
+                conf = f'#!MANAGED-CONFIG {req.url} interval=60 strict=true\r\n{conf}'
             return PlainTextResponse(conf,
                                      headers={'Content-Disposition': 'filename=ml-sub', 'profile-update-interval': "2"})
 
