@@ -11,7 +11,7 @@ from starlette.templating import Jinja2Templates
 
 import settings
 from core.config_model import ProxyNode
-from core.converter import change_host, generate_sub, sub_2_nodelist
+from core.converter import change_host, sub_2_nodelist, generate_ml_sub, generate_sub
 from core.helper import get_request
 
 # 设置日志
@@ -26,8 +26,9 @@ template = Jinja2Templates('templates')
 
 clients = [
     "Clash",
-    "Surfboard",
-    "v2rayN"
+    "v2rayN",
+    "Leaf",
+    "Surfboard"
 ]
 
 
@@ -50,36 +51,41 @@ def resolve_proxies(proxies: Union[str, List]) -> List:
 
                 if sub_content:
                     node_list = sub_2_nodelist(sub_content)
+                    logger.info(f"订阅中节点个数：{len(node_list)}，来自订阅--> {i}")
                     nodes.extend(node_list)
             else:
-                vn = ProxyNode()
-                logger.debug('检查v2节点有效性')
-                if vn.load(i):
-                    logger.info(f"v2节点，直接添加: {i}")
-                    nodes.append(vn)
+                pn = ProxyNode()
+                logger.info(f"v2节点，直接添加: {i}")
+                if pn.load(i):
+                    nodes.append(pn)
     return nodes
 
 
 @app.get("/sub")
 def sub(url: str, host: str, client: str):
-    logger.debug(f"用户需要转换的内容：{url}")
+    logger.info(f"用户需要转换的内容：{url}")
     node_content = url.strip().replace(' ', "")
     node_content = unquote(node_content)
     input_list = re.split('\\|', node_content)
 
     nodes = resolve_proxies(input_list)
 
-    logger.info(f"用户输入有效节点总个数为: {len(nodes)}")
+    logger.info(f"用户输入总节点个数为: {len(nodes)}")
 
-    conf = ""
     if nodes:
-        logger.info(f"将过滤完的节点的host用{host}替换")
-        change_host(nodes, host)
+        if host == 'd':
+            logger.info(f"将过滤完的节点的host用{host}替换")
+            change_host(nodes, host)
 
-        logger.info(f'开始生成{client}订阅')
-        conf = generate_sub(nodes, client)
-
-    return PlainTextResponse(conf, headers={'Content-Disposition': 'filename=ml-sub'})
+            logger.info(f'开始生成免流{client}订阅')
+            conf = generate_ml_sub(nodes, client)
+            return PlainTextResponse(conf,
+                                     headers={'Content-Disposition': 'filename=ml-sub', 'profile-update-interval': "2"})
+        else:
+            logger.info(f'开始生成{client}订阅')
+            conf = generate_sub(nodes, client)
+            return PlainTextResponse(conf,
+                                     headers={'Content-Disposition': 'filename=ml-sub', 'profile-update-interval': "2"})
 
 
 @app.get("/")

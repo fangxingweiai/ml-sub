@@ -1,8 +1,8 @@
-log_level = "INFO"  #"DEBUG"  #
+log_level = "DEBUG"  #"INFO"  #
 
-enable_proxy = True if log_level == 'DEBUG' else False
+enable_proxy = True#True if log_level == 'DEBUG' else False
 
 proxies = {
-    "http": "http://127.0.0.1:7891",
-    'https': 'http://127.0.0.1:7891'
+    "http": "socks5://127.0.0.1:7890",
+    'https': 'socks5://127.0.0.1:7890'
 }

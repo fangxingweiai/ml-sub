@@ -1,6 +1,7 @@
 import base64
 import ipaddress
 import os
+import re
 
 import requests
 from urllib3.exceptions import InsecureRequestWarning
@@ -70,6 +71,25 @@ def get_request(enable_proxy=False, proxies_=None):
 
 def remove_special_characters(content):
     return bytes(content, "ascii", "ignore").decode()
+
+
+def load_resources():
+    # 从secrets加载
+    links_str = os.environ.get('LINKS')
+    if links_str:
+        return list(filter(lambda x: x.strip() != "", re.split('\r\n|\r|\n', links_str.strip())))
+
+    # 从文件加载
+    with open('./resources.txt', 'r') as f:
+        return list(filter(lambda x: x.strip() != "", [i.strip() for i in f.readlines()]))
+
+
+def save_conf(conf, dir_, filename):
+    if not os.path.exists(dir_):
+        os.mkdir(dir_)
+
+    with open(f'./{dir_}/{filename}', 'w') as f:
+        f.write(conf)
 
 
 if __name__ == '__main__':
