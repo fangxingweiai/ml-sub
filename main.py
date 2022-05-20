@@ -84,7 +84,7 @@ def sub(req: Request, url: str, host: str, client: str):
             if client == 'Surfboard':
                 conf = f'#!MANAGED-CONFIG {req.url} interval=60 strict=true\r\n{conf}'
             return PlainTextResponse(conf,
-                                     headers={'Content-Disposition': 'filename=ml-sub', 'profile-update-interval': "2"})
+                                     headers={'Content-Disposition': 'filename=subapi', 'profile-update-interval': "2"})
         else:
             logger.info(f'开始生成{client}订阅')
             conf = generate_sub(nodes, client)
@@ -92,7 +92,7 @@ def sub(req: Request, url: str, host: str, client: str):
             if client == 'Surfboard':
                 conf = f'#!MANAGED-CONFIG {req.url} interval=60 strict=true\r\n{conf}'
             return PlainTextResponse(conf,
-                                     headers={'Content-Disposition': 'filename=ml-sub', 'profile-update-interval': "2"})
+                                     headers={'Content-Disposition': 'filename=subapi', 'profile-update-interval': "2"})
 
 
 @app.get("/")
