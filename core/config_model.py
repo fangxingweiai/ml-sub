@@ -365,27 +365,41 @@ class ProxyNode(object):
             return False
 
     def generate_surfboard_proxy(self):
+        # https://getsurfboard.com/docs/profile-format/proxy/
         surfboard_proxy = f'{self.protocol}, {self.address}, {self.port}'
 
-        if self.protocol == 'ss':
-            udp_relay = f', udp-relay=true' if self.udp else ''
+        if self.skip_cert_verify is True:
+            skip_cert_verify = f', skip-cert-verify=true'
+        elif self.skip_cert_verify is False:
+            skip_cert_verify = f', skip-cert-verify=false'
+        else:
+            skip_cert_verify = ''
 
+        sni = f', sni={self.sni}' if self.sni else ''
+
+        if self.udp is True:
+            udp_relay = f', udp-relay=true'
+        elif self.udp is False:
+            udp_relay = f', udp-relay=false'
+        else:
+            udp_relay = ''
+
+        if self.protocol == 'ss':
             surfboard_proxy = f'{surfboard_proxy}, encrypt-method={self.encryption}, password={self.password}{udp_relay}'
         elif self.protocol == 'trojan':
-            sni = f', sni={self.sni}' if self.sni else ''
-            skip_cert_verify = f', skip-cert-verify=true' if self.skip_cert_verify else ''
-            udp_relay = f', udp-relay=true' if self.udp else ''
-
             surfboard_proxy = f'{surfboard_proxy}, password={self.password}{udp_relay}{skip_cert_verify}{sni}'
         elif self.protocol == 'vmess':
-            udp_relay = f', udp-relay=true' if self.udp else ''
             ws = ', ws=true' if self.network == 'ws' else ''
-            tls = ', tls=true' if self.tls else ''
+
+            if self.tls is True:
+                tls = ', tls=true'
+            elif self.tls is False:
+                tls = ', tls=false'
+            else:
+                tls = ''
+
             ws_path = f', ws-path={self.path}' if self.path else ''
             ws_headers = f', ws-headers=Host:{self.host}' if self.host else ''
-            skip_cert_verify = f', skip-cert-verify=true' if self.skip_cert_verify else ''
-            sni = f', sni={self.sni}' if self.sni else ''
-            # ？？？
             vmess_aead = ', vmess-aead=true' if (self.alter_id and str(self.alter_id).strip() == '0') else ''
 
             surfboard_proxy = f'{surfboard_proxy}, username={self.uuid}{udp_relay}{ws}{tls}{ws_path}{ws_headers}{skip_cert_verify}{sni}{vmess_aead}'
