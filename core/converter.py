@@ -295,9 +295,9 @@ def generate_sub(nodes: Union[ProxyNode, List[ProxyNode]], client: str, ml: bool
 
         sub_data.append('[Proxy Group]')
         select_group = f'Proxy = select, Auto, {names}'
+        sub_data.append(select_group)
         auto_group = f'Auto = url-test, {names}, url=http://www.gstatic.com/generate_204, interval=600, tolerance=100, timeout=5'
         sub_data.append(auto_group)
-        sub_data.append(select_group)
 
         sub_data.append('[Rule]')
         if not ml:
