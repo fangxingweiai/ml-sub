@@ -274,9 +274,7 @@ def generate_sub(nodes: Union[ProxyNode, List[ProxyNode]], client: str, ml: bool
             'dns-server = 8.8.8.8, 114.114.114.114',
             'skip-proxy = 127.0.0.1, 192.168.0.0/16, 10.0.0.0/8, 172.16.0.0/12, 100.64.0.0/10, localhost, *.local',
             'proxy-test-url = http://www.gstatic.com/generate_204',
-            '[Proxy]',
-            'Direct = direct',
-            'Reject = reject',
+            '[Proxy]'
         ]
 
         proxy_nodes = []
@@ -294,14 +292,17 @@ def generate_sub(nodes: Union[ProxyNode, List[ProxyNode]], client: str, ml: bool
         names = ', '.join(proxy_name_list)
 
         sub_data.append('[Proxy Group]')
-        auto_group = f'Auto = url-test, {names}, url=http://www.gstatic.com/generate_204, interval=600, tolerance=100, timeout=5'
         select_group = f'Proxy = select, Auto, {names}'
+        auto_group = f'Auto = url-test, {names}, url=http://www.gstatic.com/generate_204, interval=600, tolerance=100, timeout=5'
         sub_data.append(auto_group)
         sub_data.append(select_group)
 
         sub_data.append('[Rule]')
         if not ml:
-            sub_data.append('GEOIP, CN, Direct')
+            sub_data.append('RULE-SET, https://cdn.jsdelivr.net/gh/Loyalsoldier/surge-rules@release/ruleset/proxy.txt, Proxy')
+            sub_data.append('RULE-SET, https://cdn.jsdelivr.net/gh/Loyalsoldier/surge-rules@release/ruleset/direct.txt, DIRECT')
+            sub_data.append('RULE-SET, https://cdn.jsdelivr.net/gh/Loyalsoldier/surge-rules@release/ruleset/telegramcidr.txt, Proxy')
+            sub_data.append('GEOIP, CN, DIRECT')
         sub_data.append('FINAL, Proxy')
 
         sub = os.linesep.join(sub_data)

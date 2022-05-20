@@ -1,4 +1,4 @@
-log_level = "DEBUG"  #"INFO"  #
+log_level = "INFO"  #"DEBUG"  #
 
 enable_proxy = True if log_level == 'DEBUG' else False
 
