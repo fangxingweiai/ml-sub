@@ -157,8 +157,8 @@ class ProxyNode(object):
                             self.alpn = urllib.parse.unquote(i.removeprefix('alpn='))
                         elif i.startswith('allowInsecure='):
                             allow_insecure = i.removeprefix('allowInsecure=')
-                            if allow_insecure == '1':
-                                self.skip_cert_verify = False
+                            if allow_insecure == '1':  # allowInsecure=1，允许不安全（跳过证书验证）, v2rayN无效
+                                self.skip_cert_verify = True
                             else:
                                 logger.warning(f'trojan连接中?后面参数allowInsecure未识别：{i}')
                         else:
@@ -329,7 +329,7 @@ class ProxyNode(object):
                 params.append(f'host={self.host}')
             if self.alpn:
                 params.append(f'alpn={urllib.parse.quote_plus(self.alpn)}')
-            if self.skip_cert_verify is False:  # true时未知????
+            if self.skip_cert_verify is True:  # False时未知????
                 params.append('allowInsecure=1')
 
             proxy = f'{self.password}@{self.address}:{self.port}'
